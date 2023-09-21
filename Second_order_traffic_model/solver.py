@@ -84,3 +84,17 @@ class ARZ(ABC):
     @abstractmethod
     def border_conditions(self):
         pass
+
+
+# ARZ con condiciones de borde periódicas
+class ARZ_periodic(ARZ):
+    
+    def __init__(self, Q_0, dx, xl, xr, U, tau):
+        
+        # Init clase padre
+        super().__init__(Q_0, dx, xl, xr, U, tau)
+    
+    # Especializa condiciones de borde
+    def border_conditions(self):
+        self.Q[:, 0] = self.Q[:, -2]
+        self.Q[:, -1] = self.Q[:, 1]
