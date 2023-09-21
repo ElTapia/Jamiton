@@ -29,6 +29,7 @@ class ARZ(ABC):
         # Condición inicial
         self.Q = Q_0(self.x, self.U)
         self.dt = 0
+        self.t = 0
         
         # Gráfico animado
         fig, ax = plt.subplots()
@@ -59,6 +60,7 @@ class ARZ(ABC):
         
         # Actualiza segun condicion CFL
         self.dt = cfl(self.dt, self.dx, self.Q)
+        self.t += self.dt
         # Lambda
         l = self.dt/self.dx
         
@@ -98,3 +100,37 @@ class ARZ_periodic(ARZ):
     def border_conditions(self):
         self.Q[:, 0] = self.Q[:, -2]
         self.Q[:, -1] = self.Q[:, 1]
+
+
+# ARZ con borde Dirichlet y Neumann
+class ARZ_infinite(ARZ):
+    
+    def __init__(self, Q_0, dx, xl, xr, U, tau, Q_izq):
+        
+        # Init clase padre
+        super().__init__(Q_0, dx, xl, xr, U, tau)
+        self.Q_izq = Q_izq
+    
+    # Especializa condiciones de borde
+    def border_conditions(self):
+        
+        # Condición Dirichlet a la izquierda
+        # Entran autos por un tiempo
+        if 0<self.t and self.t<50:
+            # Densidad
+            self.Q[0][0] = self.Q_izq[0]
+        
+            # Velocidad
+            self.Q[1][0] = self.Q_izq[1]
+        
+        # Entran menos autos
+        else:
+            # Densidad
+            self.Q[0][0] = 0.1
+        
+            # Velocidad
+            self.Q[1][0] = 10
+        
+        # Neumann lado derecho
+        self.Q[:, -1] = self.Q[:, -2]
+        
