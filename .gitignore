@@ -2,3 +2,7 @@
 .DS_Store
 .ipynb_checkpoints
 .pyc
+Second_order_traffic_model/__pycache__/Functions.cpython-37.pyc
+.gitignore
+Second_order_traffic_model/__pycache__/init_conditions.cpython-39.pyc
+Second_order_traffic_model/__pycache__/Functions.cpython-39.pyc
