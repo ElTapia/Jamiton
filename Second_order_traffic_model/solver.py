@@ -29,14 +29,21 @@ class ARZ(ABC):
     
         # Condición inicial
         # Asigna mismos valores en toda la grilla
+        self.Q_0 = Q_0
         self.Q = np.zeros([2, len(self.x)])
-        self.Q[0] = self.Q[0] + Q_0[0] #Q_0(self.x, self.U)
-        self.Q[1] = self.Q[1] + Q_0[1]
+        self.Q[0] = self.Q[0] + self.Q_0[0] #Q_0(self.x, self.U)
+        self.Q[1] = self.Q[1] + self.Q_0[1]
         self.dt = 0
         self.t = 0
 
         # Gráfico animado
-        self.fig, self.axs = plt.subplots(1, 2)
+        self.fig = plt.figure(figsize=(12, 8))
+        self.gs = self.fig.add_gridspec(nrows=13, ncols=13)
+        ax1 =  self.fig.add_subplot(self.gs[0:11, 0:8])
+        ax2 = self.fig.add_subplot(self.gs[0:11, 9:13])
+        slider_ax = self.fig.add_subplot(self.gs[12:13, 2:11])
+        
+        self.axs = [ax1, ax2, slider_ax]
         
         # Gráfico densidad
         self.axs[0].set_title('Densidad')
@@ -50,6 +57,7 @@ class ARZ(ABC):
         self.axs[1].set_xlabel("x")
         self.axs[1].set_ylim(-10, 40.0)
 
+
         # Plotea lineas
         self.p_1, = self.axs[0].plot(self.x, self.Q[0], color="r")
         self.p_2, = self.axs[1].plot(self.x, self.Q[1], color="b")
@@ -59,9 +67,17 @@ class ARZ(ABC):
         self.paused = False
         self.started = False
 
-        self.fig.canvas.mpl_connect('button_press_event', self.toggle_pause)
         self.fig.canvas.mpl_connect('key_press_event', self.press_event)
-    
+
+        self.text_box = TextBox(self.axs[2], 'Perturbación', initial="")
+        self.text_box.on_submit(self.submit)
+
+
+    # Ingresa perturbación inicial
+    def submit(self, text):
+        self.rho_per, self.u_per = eval(text)
+
+
     # Función para poner pausa
     def toggle_pause(self, *args, **kwargs):
         if self.paused:
@@ -73,7 +89,6 @@ class ARZ(ABC):
     
     # Detecta botones presionados
     def press_event(self, event):
-        print("presionaste: ", event.key)
         if event.key == "enter":
             self.toggle_start()
 
@@ -83,11 +98,17 @@ class ARZ(ABC):
         if event.key == "down":
             self.toggle_rho_down()
             
-        if event.key == "w":
+        if event.key == "e":
             self.toggle_u_up()
 
-        if event.key == "s":
+        if event.key == "d":
             self.toggle_u_down()
+            
+        if event.key == "r":
+            self.toggle_reset()
+        
+        if event.key == "p":
+            self.toggle_pause()
 
 
     # Aumenta densidad
@@ -105,19 +126,31 @@ class ARZ(ABC):
     # Disminuye velocidad
     def toggle_u_down(self, *args, **kwargs):
         self.Q[1] -= 5
+        
+    # Reinicia simulación
+    def toggle_reset(self, *args, **kwargs):
+        self.Q[0] = self.Q_0[0]
+        self.Q[1] = self.Q_0[1]
+        self.t = 0
+        self.started = not self.started
 
 
-    
-    # Función para variar densidad y velocidad en un punto
+    # Función para empezar simulación
     def toggle_start(self, *args, **kwargs):
         if not self.started:
-            self.Q[0][self.N//2] += 0.4
-            self.Q[1][self.N//2] -= 5     
+            self.Q[0][self.N//2] += self.rho_per
+            self.Q[1][self.N//2] += self.u_per 
             
         self.started = not self.started  
-    
+
     def update(self, i):
         
+        # No actualiza
+        if not self.started:
+            self.p_1.set_ydata(self.Q[0])
+            self.p_2.set_ydata(self.Q[1])
+            return [self.p_1, self.p_2,]
+
         # Actualiza segun condicion CFL
         self.dt = cfl(self.dt, self.dx, self.Q)
         self.t += self.dt
