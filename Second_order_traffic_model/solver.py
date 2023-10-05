@@ -55,12 +55,12 @@ class ARZ(ABC):
         self.axs[1].set_title('Velocidad')
         self.axs[1].set_ylabel(r"$u$")
         self.axs[1].set_xlabel("x")
-        self.axs[1].set_ylim(-10, 40.0)
+        self.axs[1].set_ylim(-10, 80.0)
 
 
         # Plotea lineas
         self.p_1, = self.axs[0].plot(self.x, self.Q[0], color="r")
-        self.p_2, = self.axs[1].plot(self.x, self.Q[1], color="b")
+        self.p_2, = self.axs[1].plot(self.x, u(self.Q[0], self.Q[1], U), color="b")
 
         self.animation = animation.FuncAnimation(
             self.fig, self.update, frames=200, interval=1)#, blit=True)
@@ -121,11 +121,11 @@ class ARZ(ABC):
     
     # Aumenta velocidad
     def toggle_u_up(self, *args, **kwargs):
-        self.Q[1] += 5
+        self.Q[1] += 0.5
 
     # Disminuye velocidad
     def toggle_u_down(self, *args, **kwargs):
-        self.Q[1] -= 5
+        self.Q[1] -= 0.5
         
     # Reinicia simulación
     def toggle_reset(self, *args, **kwargs):
@@ -138,8 +138,8 @@ class ARZ(ABC):
     # Función para empezar simulación
     def toggle_start(self, *args, **kwargs):
         if not self.started:
-            self.Q[0][self.N//2] += self.rho_per
-            self.Q[1][self.N//2] += self.u_per 
+            self.Q[0][self.N//4] += self.rho_per
+            self.Q[1][self.N//4] += self.u_per 
             
         self.started = not self.started  
 
@@ -148,7 +148,7 @@ class ARZ(ABC):
         # No actualiza
         if not self.started:
             self.p_1.set_ydata(self.Q[0])
-            self.p_2.set_ydata(self.Q[1])
+            self.p_2.set_ydata(u(self.Q[0], self.Q[1], U))
             return [self.p_1, self.p_2,]
 
         # Actualiza segun condicion CFL
@@ -173,7 +173,7 @@ class ARZ(ABC):
 
         # Actualiza gráfico
         self.p_1.set_ydata(self.Q[0])
-        self.p_2.set_ydata(self.Q[1])
+        self.p_2.set_ydata(u(self.Q[0], self.Q[1], U))
         self.axs[0].set_title('Densidad t=' + str("%.2f" % self.t))
         self.axs[1].set_title('Velocidad t=' + str("%.2f" % self.t))
         return [self.p_1, self.p_2,]
@@ -212,21 +212,25 @@ class ARZ_infinite(ARZ):
         
         # Condición Dirichlet a la izquierda
         # Entran autos por un tiempo
-        if 0<self.t and self.t<50:
-            # Densidad
-            self.Q[0][0] = self.Q_izq[0]
-        
-            # Velocidad
-            self.Q[1][0] = self.Q_izq[1]
-        
+        #if 0<self.t and self.t<50:
+
+        # Densidad
+        self.Q[0][0] = self.Q_izq[0]
+
+        # y
+        self.Q[1][0] = self.Q_izq[1]
+
         # Entran menos autos
-        else:
+        #else:
+        #    rho_else = 0.1
+        #    u_else = 10
+        #    y_else = y_u(rho_else, u_else, U)
+
             # Densidad
-            self.Q[0][0] = 0.1
-        
-            # Velocidad
-            self.Q[1][0] = 10
-        
+        #    self.Q[0][0] = rho_else
+
+            # y
+        #    self.Q[1][0] = y_else
+
         # Neumann lado derecho
         self.Q[:, -1] = self.Q[:, -2]
-        

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from scipy import integrate
 
 # Parámetros
-u_max = 60
+u_max = 20
 gamm = 1/2
 
 # Define u en función de rho e y
@@ -74,6 +74,11 @@ def U(rho, umax=u_max, gamma = gamm):
 # TODO: Quitar casos redundantes
 # TODO: Cambiar si se quiere cambiar el h(rho) o U(rho)
 # TODO: Agregar Riemann no homogeneo
+# Solución problema de Riemann homogeneo
+
+# TODO: Quitar casos redundantes
+# TODO: Cambiar si se quiere cambiar el h(rho) o U(rho)
+# TODO: Agregar Riemann no homogeneo
 def w(Q_l, Q_r, U, umax=u_max, gamma=gamm):
     
     # Rescata variables a la izquierda
@@ -81,139 +86,139 @@ def w(Q_l, Q_r, U, umax=u_max, gamma=gamm):
     
     # Rescata variables a la derecha
     rho_r, y_r = Q_r
+      
+    # Obtiene velocidades
+    u_l = u(rho_l, y_l, U)
+    u_r = u(rho_r, y_r, U)
+    u_m = u_r
+
+    # Define valor medio de rho y u
+    rho_m = (rho_l**gamma + (u_l - u_r)/umax)**(1/gamma)
     
-    # rho_l es 0
-    if np.isclose(rho_l, 0):
-        rho_0 = 0
-        y_0 = 0
-        
-    else:
-        # Obtiene velocidades
-        u_l = u(rho_l, y_l, U)
-        u_r = u(rho_r, y_r, U)
-        u_m = u_r
+    if umax*rho_l**gamma + u_l <= u_r:
+        print("No hay solución")
+        print("u_r = ", u_r, "demás = ", umax*rho_l**gamma + u_l)
 
-        # Define valor medio de rho y u
-        rho_m = (rho_l**gamma + (u_l - u_r)/umax)**(1/gamma)
+    # u_r y u_l cercanos
+    if np.isclose(u_r, u_l):
 
-        if umax*rho_l**gamma + u_l <= u_r:
-            print("No hay solución")
-            print("u_r = ", u_r, "demás = ", umax*rho_l**gamma + u_l)
+        # Solucion en 0
+        rho_0 = rho_l
+        u_0 = u_l
 
-        # u_r y u_l cercanos
-        if np.isclose(u_r, u_l):
+    # u_r menor a u_l
+    elif u_r < u_l:
+
+        # Define velocidad del shock
+        l_s = (rho_m * u_m - rho_l * u_l)/(rho_m - rho_l)
+
+        # Si es positivo
+        if l_s >= 0:
 
             # Solucion en 0
             rho_0 = rho_l
             u_0 = u_l
 
-        # u_r menor a u_l
-        elif u_r < u_l:
+        # Si es negativo
+        else:
 
-            # Define velocidad del shock
-            l_s = (rho_m * u_m - rho_l * u_l)/(rho_m - rho_l)
+            # Solucion en 0
+            rho_0 = rho_m
+            u_0 = u_m
 
-            # Si es positivo
-            if l_s >= 0:
+    # Condición u_l en un intervalo en función de u_r
+    elif u_r - umax*rho_l**gamma < u_l < u_r:
 
-                # Solucion en 0
-                rho_0 = rho_l
-                u_0 = u_l
+        # Lambdas a la izquierda y centrado con respecto al 0
+        l_0_l = u_l - umax * gamma * rho_l**gamma
+        l_0_m = u_r - umax*gamma*rho_l**gamma + gamma*(u_r - u_l)
 
-            # Si es negativo
-            else:
+        # Lambda izquierda es positivo
+        if l_0_l >= 0:
 
-                # Solucion en 0
-                rho_0 = rho_m
-                u_0 = u_m
+            # Solucion en 0
+            rho_0 = rho_l
+            u_0 = u_l
 
-        # Condición u_l en un intervalo en función de u_r
-        elif u_r - umax*rho_l**gamma < u_l < u_r:
+        # Lambda derecha es negativo
+        elif l_0_m <= 0:
 
-            # Lambdas a la izquierda y centrado con respecto al 0
-            l_0_l = u_l - umax * gamma * rho_l**gamma
-            l_0_m = u_r - umax*gamma*rho_l**gamma + gamma*(u_r - u_l)
+            # Solucion en 0
+            rho_0 = rho_m
+            u_0 = u_m
 
-            # Lambda izquierda es positivo
-            if l_0_l >= 0:
+        # A la izquierda es negativo y centrado positivo
+        elif l_0_l < 0 < l_0_m:
+            rho_bar = ((u_l + umax*rho_l**gamma)/((gamma + 1)*umax))**(1/gamma)
+            u_bar = (gamma/(gamma+1)) * (u_l + umax*rho_l**gamma)
 
-                # Solucion en 0
-                rho_0 = rho_l
-                u_0 = u_l
+            # Solucion en 0
+            rho_0 = rho_bar
+            u_0 = u_bar
 
-            # Lambda derecha es negativo
-            elif l_0_m <= 0:
+    # u_l menor a u_r menos algo
+    elif u_l <= u_r - umax*rho_l**gamma:
 
-                # Solucion en 0
-                rho_0 = rho_m
-                u_0 = u_m
+        # Lambda a la izquierda del 0
+        l_0_l = u_l - umax * gamma * rho_l**gamma
 
-            # A la izquierda es negativo y centrado positivo
-            elif l_0_l < 0 < l_0_m:
-                rho_bar = ((u_l + umax*rho_l**gamma)/((gamma + 1)*umax))**(1/gamma)
-                u_bar = (gamma/(gamma+1)) * (u_l + umax*rho_l**gamma)
+        # Si es positivo
+        if l_0_l >= 0:
 
-                # Solucion en 0
-                rho_0 = rho_bar
-                u_0 = u_bar
+            # Solucion en 0
+            rho_0 = rho_l
+            u_0 = u_l
 
-        # u_l menor a u_r menos algo
-        elif u_l <= u_r - umax*rho_l**gamma:
+        # Si es negativo
+        else:
+            rho_bar = ((u_l + umax*rho_l**gamma)/((gamma + 1)*umax))**(1/gamma)
+            u_bar = (gamma/(gamma+1)) * (u_l + umax*rho_l**gamma)
 
-            # Lambda a la izquierda del 0
-            l_0_l = u_l - umax * gamma * rho_l**gamma
+            # Solucion en 0
+            rho_0 = rho_bar
+            u_0 = u_bar
 
-            # Si es positivo
-            if l_0_l >= 0:
-
-                # Solucion en 0
-                rho_0 = rho_l
-                u_0 = u_l
-
-            # Si es negativo
-            else:
-                rho_bar = ((u_l + umax*rho_l**gamma)/((gamma + 1)*umax))**(1/gamma)
-                u_bar = (gamma/(gamma+1)) * (u_l + umax*rho_l**gamma)
-
-                # Solucion en 0
-                rho_0 = rho_bar
-                u_0 = u_bar
-
-        # rho_l cero y rho_r positivo
-        # TODO: Ver equivalencia a algun caso anterior
-        elif np.isclose(rho_l, 0) and rho_r >0:
-            rho_0 = 0
-            u_0 = 0
-
-        # Opuesto al anterior
-        # TODO: Ver equivalencia a algun caso anterior
-        elif rho_l > 0 and np.isclose(rho_r, 0):
-
-            # Velocidad
-            u_l = u(rho_l, y_l, U)
-
-            # Obtiene lambda a la izquierda del 0
-            l_0_l = u_l - umax * gamma * rho_l**gamma
-
-            # Si es positivo
-            if l_0_l >= 0:
-
-                # Solucion en 0
-                rho_0 = rho_l
-                u_0 = u_l
-
-            # Si es negativo
-            else:
-                rho_bar = ((u_l + umax*rho_l**gamma)/((gamma + 1)*umax))**(1/gamma)
-                u_bar = (gamma/(gamma+1)) * (u_l + umax*rho_l**gamma)
-
-                # Solucion en 0
-                rho_0 = rho_bar
-                u_0 = u_bar
+    # rho_l cero y rho_r positivo
+    # TODO: Ver equivalencia a algun caso anterior
+    elif np.isclose(rho_l, 0) and rho_r >0:
+        rho_0 = 0
+        u_0 = 0
+    
+    # Opuesto al anterior
+    # TODO: Ver equivalencia a algun caso anterior
+    elif rho_l > 0 and np.isclose(rho_r, 0):
+        
+        # Velocidad
+        u_l = u(rho_l, y_l, U)
+        
+        # Obtiene lambda a la izquierda del 0
+        l_0_l = u_l - umax * gamma * rho_l**gamma
+        
+        # Si es positivo
+        if l_0_l >= 0:
+            
+            # Solucion en 0
+            rho_0 = rho_l
+            u_0 = u_l
+        
+        # Si es negativo
+        else:
+            rho_bar = ((u_l + umax*rho_l**gamma)/((gamma + 1)*umax))**(1/gamma)
+            u_bar = (gamma/(gamma+1)) * (u_l + umax*rho_l**gamma)
+            
+            # Solucion en 0
+            rho_0 = rho_bar
+            u_0 = u_bar
+    
+    # rho_l  es cero
+    # TODO: Escribir casos densidad = 0
+    else: #np.isclose(rho_l, 0):
+        rho_0 = 0
+        u_0 = 0
         
     
-        # Obtiene y_0 segun el u_0 obtenido
-        y_0 = y_u(rho_0, u_0, U)
+    # Obtiene y_0 segun el u_0 obtenido
+    y_0 = y_u(rho_0, u_0, U)
     
     return np.array([rho_0, y_0])
 
