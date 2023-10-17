@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 from scipy import integrate
 
 # Parámetros
-u_max = 20
-gamm = 1/2
+u_max = 102#20.8 #20.8 #2 92
+gamm = 0.027#0.03 #0.03
 
 # Define u en función de rho e y
 def u(rho, y, U):
@@ -221,6 +221,10 @@ def w(Q_l, Q_r, U, umax=u_max, gamma=gamm):
     y_0 = y_u(rho_0, u_0, U)
     
     return np.array([rho_0, y_0])
+
+
+#def w_(Q_l, Q_r, U, Vmax=V_max, rhocr=rho_cr, rhomax=rho_max, Wmax=W_max, Qmax=Q_max):
+#    pass
 
 
 # Condición CFL

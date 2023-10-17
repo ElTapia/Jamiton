@@ -1,6 +1,7 @@
 # Script con condiciones iniciales
 
 import numpy as np
+from functions_new import *
 
 # Primera condición inicial
 # Constante por pedazos
@@ -50,7 +51,7 @@ def Q_0_2(x, U):
 def Q_0_3(x, U):
     
     # Gaussiana centrada en 1500
-    rho_0 = np.exp(-((x+500)**2)/1000)/1.5 + 0.1 #np.exp(-x**2/(2*2.7**2))/(2.7*np.sqrt(2*np.pi))
+    rho_0 = (np.exp(-((x-400)**2)/20_000)/6+0.1) * rhomax #np.exp(-x**2/(2*2.7**2))/(2.7*np.sqrt(2*np.pi))
     
     # Menor velocidad en mayor densidad
     u_0 = 1/rho_0

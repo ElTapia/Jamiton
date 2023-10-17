@@ -6,10 +6,10 @@ from matplotlib.widgets import TextBox
 from abc import ABC, abstractmethod
 
 # Funciones de simulación
-from functions import *
+from functions_new import *
 
 # Implementa Godunov
-# Condiciones de borde se especializan en clases hijas
+# Condiciones de borde se implementan en clases hijas
 class ARZ(ABC):
     
     def __init__(self, Q_0, dx, xl, xr, U, tau):
@@ -30,10 +30,14 @@ class ARZ(ABC):
         # Condición inicial
         # Asigna mismos valores en toda la grilla
         self.Q_0 = Q_0
-        self.Q = np.zeros([2, len(self.x)])
+        self.Q = np.zeros([2, self.N])#len(self.x)])
+        
+        # Asigna valor inicial homogéneo
         self.Q[0] = self.Q[0] + self.Q_0[0] #Q_0(self.x, self.U)
         self.Q[1] = self.Q[1] + self.Q_0[1]
-        self.dt = 0
+        
+        # Tiempo inicial 
+        self.dt = 0 # Después se actualiza al valor que corresponde
         self.t = 0
 
         # Gráfico animado
@@ -50,26 +54,29 @@ class ARZ(ABC):
         self.axs[0].set_ylabel(r"$\rho$")
         self.axs[0].set_xlabel("x")
         self.axs[0].set_ylim(-0.1, 1.0)
+        self.axs[0].set_xlim(0, 3_000)
         
         # Gráfico velocidad
         self.axs[1].set_title('Velocidad')
         self.axs[1].set_ylabel(r"$u$")
         self.axs[1].set_xlabel("x")
         self.axs[1].set_ylim(-10, 80.0)
+        self.axs[1].set_xlim(0, 3_000)
 
 
         # Plotea lineas
-        self.p_1, = self.axs[0].plot(self.x, self.Q[0], color="r")
+        self.p_1, = self.axs[0].plot(self.x, self.Q[0]/rhomax, color="r")
         self.p_2, = self.axs[1].plot(self.x, u(self.Q[0], self.Q[1], U), color="b")
 
         self.animation = animation.FuncAnimation(
-            self.fig, self.update, frames=200, interval=1)#, blit=True)
+            self.fig, self.update, frames=50, interval=1)#, blit=True)
         self.paused = False
         self.started = False
 
         self.fig.canvas.mpl_connect('key_press_event', self.press_event)
 
-        self.text_box = TextBox(self.axs[2], 'Perturbación', initial="")
+        self.rho_per, self.u_per = 0, 0
+        self.text_box = TextBox(self.axs[2], 'Perturbación', initial="0, 0")
         self.text_box.on_submit(self.submit)
 
 
@@ -82,6 +89,7 @@ class ARZ(ABC):
     def toggle_pause(self, *args, **kwargs):
         if self.paused:
             self.animation.resume()
+
         else:
             self.animation.pause()
         self.paused = not self.paused
@@ -113,11 +121,11 @@ class ARZ(ABC):
 
     # Aumenta densidad
     def toggle_rho_up(self, *args, **kwargs):
-        self.Q[0] += 0.1
+        self.Q[0] += 0.1*rhomax
 
     # Disminuye densidad
     def toggle_rho_down(self, *args, **kwargs):
-        self.Q[0] -= 0.1
+        self.Q[0] -= 0.1*rhomax
     
     # Aumenta velocidad
     def toggle_u_up(self, *args, **kwargs):
@@ -126,7 +134,7 @@ class ARZ(ABC):
     # Disminuye velocidad
     def toggle_u_down(self, *args, **kwargs):
         self.Q[1] -= 0.5
-        
+
     # Reinicia simulación
     def toggle_reset(self, *args, **kwargs):
         self.Q[0] = self.Q_0[0]
@@ -138,7 +146,7 @@ class ARZ(ABC):
     # Función para empezar simulación
     def toggle_start(self, *args, **kwargs):
         if not self.started:
-            self.Q[0][self.N//4] += self.rho_per
+            self.Q[0][self.N//4] += self.rho_per*rhomax
             self.Q[1][self.N//4] += self.u_per 
             
         self.started = not self.started  
@@ -147,7 +155,7 @@ class ARZ(ABC):
         
         # No actualiza
         if not self.started:
-            self.p_1.set_ydata(self.Q[0])
+            self.p_1.set_ydata(self.Q[0]/rhomax)
             self.p_2.set_ydata(u(self.Q[0], self.Q[1], U))
             return [self.p_1, self.p_2,]
 
@@ -165,14 +173,14 @@ class ARZ(ABC):
 
         # Resuelve termino de relajación
         y_sig__ = y_sig * (1 - self.dt/(2 *self.tau * rho_sig))
-        y_sig_ = y_sig - (self.dt * y_sig__)/(self.tau * rho_sig)
+        y_sig_ = y_sig - ((self.dt * y_sig__)/(self.tau * rho_sig))
         self.Q[1] = y_sig_
 
         # Agrega condiciones de borde
         self.border_conditions()
 
         # Actualiza gráfico
-        self.p_1.set_ydata(self.Q[0])
+        self.p_1.set_ydata(self.Q[0]/rhomax)
         self.p_2.set_ydata(u(self.Q[0], self.Q[1], U))
         self.axs[0].set_title('Densidad t=' + str("%.2f" % self.t))
         self.axs[1].set_title('Velocidad t=' + str("%.2f" % self.t))
