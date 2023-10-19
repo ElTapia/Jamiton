@@ -5,24 +5,30 @@ from scipy.optimize import newton
 from scipy.interpolate import interp1d
 
 # Parámetros
+gamm = 1/2
+beta = 8
 umax = 20
-gamm = 0.5 
-b = 8
 rhomax = 1/7.5
+c = 0.078 * umax * rhomax
+b = 1/3
+l = 1/10
 
 # Define u en función de rho e y
-def u(rho, y, U):
-    output = y/rho + U(rho)
+# TODO: Cambiar a función h
+def u(rho, y, h):#U):
+    output = y/rho - h(rho)
     return output
 
 
 # Define y en función de rho y u
-def y_u(rho, u, U):
-    output = rho*(u - U(rho))
+# TODO: Cambiar a función h
+def y_u(rho, u, h):#U):
+    output = rho*(u + h(rho))
     return output
 
 
 # Flujo del modelo
+# TODO: Verificar que funciona
 def flux(Q, U):
     
     # Rescata variables
@@ -70,67 +76,67 @@ def density_integral(x, dx, N_t, Q):
 
 
 # Funciones del modelo
-# Funcion de duda
-def h(rho, beta=b, rho_max=rhomax, gamma=gamm):
-    output = beta * (rho /(rho_max - rho))**gamma
+# Función de duda
+def h(rho, rho_max=rhomax, gamma=gamm):
+    output = beta * (rho_max/(rho_max - rho))**gamma
     return output
 
+# Función g
+def g(y, b=b, l=l):
+    output = np.sqrt(1 + ((y-b)/l)**2 )
+    return output
+
+# Diagrama fundamental
+def Q_e(rho, rho_max=rhomax, c=c):
+    output = c * (g(0) + (((g(1) - g(0))* rho/rho_max)) - g(rho/rho_max))
+    return output
+
+# Derivada de g
+def g_prime(y, b=b, l=l):
+    output = (1/l**2) * ((y-b)/ np.sqrt(1 + ((y+b)/l)**2)) 
+    return output
+
+# Derivada de Q
+def Q_prime(rho, rho_max=rhomax, c=c):
+    output = c * (((g(1) - g(0))/rho_max) - (g_prime(rho/rho_max)/rho_max))
+    return output
 
 # Velocidad de equilibrio
 def U(rho, u_max=umax):
-    return u_max - h(rho)
+    return Q_e(rho)/rho
 
-
-# Derivada de U
-def U_prime(rho, rho_max=rhomax, gamma=gamm):
-    output = gamma * rho_max * h(rho) * (rho/(rho_max - rho))
+# Derivada de la velocidad de equilibrio
+def U_prime(rho):
+    output = (Q_prime(rho) - U(rho))/rho
     return output
 
 
-# Diagrama fundamental
-def Q_e(rho, rho_max=rhomax):
-    if np.isclose(rho, rho_max):
-        return 0
-    
-    output = rho * U(rho)
-    return output
-
-
-# Funcion inversa de U
-def U_inv(z, u_max=umax, beta=b, rho_max=rhomax, gamma=gamm):
-    output = rho_max * (((u_max-z)/beta)**(1/gamma)/(1 + ((u_max-z)/beta)**(1/gamma)))
-    return output
-
-
-# Derivada de Q
-def Q_prime(rho, rho_max=rhomax, gamma=gamm):
-    output = U(rho) + gamma * rho_max * h(rho) * (rho**2)/(rho_max - rho)
-    return output
-
-
-# Calcula inversa de la derivada de Q
-# Función para pocos puntos
-def Q_p_inv_points(z, u_max=umax, rho_max=rhomax):
+# Inversa de U
+def U_inv_points(z, rho_max=rhomax):
     z = float(z)
-    Q_to_root = lambda x: Q_prime(x)-z
+    U_to_inv = lambda x: U(x)-z
     
-    if 19.7 < z <= u_max:
-        rho = np.real(newton(Q_to_root, 0.0))
-        return rho
-    
-    rho = np.real(newton(Q_to_root, 0.8*rho_max))
+    rho = np.real(newton(U_to_inv, 0.5*rho_max))
     return rho
 
+zs_U = np.linspace(umax, 0, 50)
+U_inv_to_poly = [U_inv_points(z) for z in zs_U]
 
-# Evalua en algunos puntos
-zs = np.linspace(0.96, umax, 50)
-Q_p_inv_to_poly = [Q_p_inv_points(z) for z in zs]
+U_inv = interp1d(zs_U, U_inv_to_poly)
 
-# Interpola para obtener función inversa
-Q_p_inv = interp1d(zs, Q_p_inv_to_poly)
 
-# Funciona como el rho_max
-root_U = np.real(newton(U, rhomax-1e-4)) 
+# Inversa de la derivada de Q
+def Q_p_inv_points(z, rho_max=rhomax):
+    z = float(z)
+    Q_to_inv = lambda x: Q_prime(x)-z
+    
+    rho = np.real(newton(Q_to_inv, 0.5*rho_max))
+    return rho
+
+zs_Q = np.linspace(-2, umax, 50)
+Q_p_inv_to_poly = [Q_p_inv_points(z) for z in zs_Q]
+
+Q_p_inv = interp1d(zs_Q, Q_p_inv_to_poly)
 
 
 # Solución problema de Riemann
@@ -191,13 +197,13 @@ def w(Q_l, Q_r, U, u_max=umax, gamma=gamm, rho_max=rhomax):
                 u_w = u_0
 
     else:
-        if u_r >= (rho_l * u_l)/root_U: #rho_max
+        if u_r >= (rho_l * u_l)/rho_max:
             u_w = u_l
             rho_w = rho_l
         
         else:
             u_w = u_r
-            rho_w = root_U #rho_max # podria dar problema por la elección de Q
+            rho_w = rho_max # podria dar problema por la elección de Q_e
 
     y_w = y_u(rho_w, u_w, U)
 
@@ -214,21 +220,20 @@ def cfl(dt, dx, Q, eps=1e-2, u_max=umax, rho_max=rhomax):
     if len(zero_rho) == 0:
         u_ = u(rho, y, U)
     
-        #l_max = np.max(u_)
-        Q_e_list = np.array([Q_e(rh) for rh in rho])
-        I_max = np.max(np.fabs(rho * u_ - Q_e_list))
+        l_max = np.max(u_)
+        #Q_e_list = np.array([Q_e(rh) for rh in rho])
+        #I_max = np.max(np.fabs(rho * u_ - Q_e_list))
 
         # Podría dar problemas
-        new_dt = dx/(2* (u_max + np.max([Q_prime(root_U), I_max]))) #dx/(2*l_max)
+        new_dt = dx/(2*l_max) #dx/(2* (u_max + np.max([Q_prime(rho_max), I_max])))
     
         # Condición si nuevo dt es mayor
-        if new_dt < dt and dt != 0:
+        if new_dt > dt and dt != 0:
             return dt
     
     else:
         new_dt = dt
 
-    print(new_dt)
     return new_dt
 
 

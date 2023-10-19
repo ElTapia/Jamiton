@@ -12,10 +12,11 @@ from functions_new import *
 # Condiciones de borde se implementan en clases hijas
 class ARZ(ABC):
     
-    def __init__(self, Q_0, dx, xl, xr, U, tau):
+    def __init__(self, Q_0, dx, xl, xr, U, h, tau):
         # Guarda variables
         self.dx = dx
         self.U = U
+        self.h = h
         self.tau = tau
         
         # Largo de la grilla
@@ -54,14 +55,14 @@ class ARZ(ABC):
         self.axs[0].set_ylabel(r"$\rho$")
         self.axs[0].set_xlabel("x")
         self.axs[0].set_ylim(-0.1, 1.0)
-        self.axs[0].set_xlim(0, 3_000)
+        #self.axs[0].set_xlim(0, 3_000)
         
         # Gráfico velocidad
         self.axs[1].set_title('Velocidad')
         self.axs[1].set_ylabel(r"$u$")
         self.axs[1].set_xlabel("x")
         self.axs[1].set_ylim(-10, 80.0)
-        self.axs[1].set_xlim(0, 3_000)
+        #self.axs[1].set_xlim(0, 3_000)
 
 
         # Plotea lineas
@@ -121,11 +122,11 @@ class ARZ(ABC):
 
     # Aumenta densidad
     def toggle_rho_up(self, *args, **kwargs):
-        self.Q[0] += 0.1*rhomax
+        self.Q[0] += 0.05*rhomax
 
     # Disminuye densidad
     def toggle_rho_down(self, *args, **kwargs):
-        self.Q[0] -= 0.1*rhomax
+        self.Q[0] -= 0.05*rhomax
     
     # Aumenta velocidad
     def toggle_u_up(self, *args, **kwargs):
@@ -141,6 +142,7 @@ class ARZ(ABC):
         self.Q[1] = self.Q_0[1]
         self.t = 0
         self.started = not self.started
+        self.dt=0
 
 
     # Función para empezar simulación
@@ -170,10 +172,14 @@ class ARZ(ABC):
 
         # Agrega no homogeneidad
         rho_sig, y_sig = self.Q
+        alpha = self.dt/self.tau
 
         # Resuelve termino de relajación
-        y_sig__ = y_sig * (1 - self.dt/(2 *self.tau * rho_sig))
-        y_sig_ = y_sig - ((self.dt * y_sig__)/(self.tau * rho_sig))
+        # TODO: Cambiar a modelo ARZ de Seibold
+        #y_sig__ = y_sig * (1 - self.dt/(2 *self.tau * rho_sig))
+        #y_sig_ = y_sig - ((self.dt * y_sig__)/(self.tau * rho_sig))
+        y_sig_ = y_sig * (1 - alpha) + alpha * (rho_sig * self.U(rho_sig) + self.h(rho_sig))
+        
         self.Q[1] = y_sig_
 
         # Agrega condiciones de borde
@@ -195,10 +201,10 @@ class ARZ(ABC):
 # ARZ con condiciones de borde periódicas
 class ARZ_periodic(ARZ):
     
-    def __init__(self, Q_0, dx, xl, xr, U, tau):
+    def __init__(self, Q_0, dx, xl, xr, U, h, tau):
         
         # Init clase padre
-        super().__init__(Q_0, dx, xl, xr, U, tau)
+        super().__init__(Q_0, dx, xl, xr, U, h, tau)
     
     # Especializa condiciones de borde
     def border_conditions(self):

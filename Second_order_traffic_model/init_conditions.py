@@ -48,7 +48,7 @@ def Q_0_2(x, U):
 
 # Tercera condición inicial
 # Gaussiana
-def Q_0_3(x, U):
+def Q_0_3(x, h):
     
     # Gaussiana centrada en 1500
     rho_0 = (np.exp(-((x-400)**2)/20_000)/6+0.1) * rhomax #np.exp(-x**2/(2*2.7**2))/(2.7*np.sqrt(2*np.pi))
@@ -57,7 +57,7 @@ def Q_0_3(x, U):
     u_0 = 1/rho_0
     
     # y inicial en funcion de u y rho
-    y_0 = rho_0 * (u_0 - U(rho_0))
+    y_0 = rho_0 * (u_0 + h(rho_0))
     
     # Vector con codicion
     Q_0_ = np.zeros([2, len(x)])
