@@ -33,10 +33,15 @@ class ARZ(ABC):
         self.Q_0 = Q_0
         self.Q = np.zeros([2, self.N])#len(self.x)])
         
-        # Asigna valor inicial homogéneo
+        # Asigna valor inicial
         self.Q[0] = self.Q[0] + self.Q_0[0] #Q_0(self.x, self.U)
         self.Q[1] = self.Q[1] + self.Q_0[1]
-        
+
+        # Velocidad relativa inicial
+        # Sirve para condición CFL
+        self.I_init = u(self.Q_0[0], self.Q_0[1], self.h) - self.U(self.Q_0[0])
+        self.I_plus = np.max(np.fabs(self.I_init))
+
         # Tiempo inicial 
         self.dt = 0 # Después se actualiza al valor que corresponde
         self.t = 0
@@ -56,7 +61,7 @@ class ARZ(ABC):
         self.axs[0].set_xlabel("x")
         self.axs[0].set_ylim(-0.1, 1.0)
         #self.axs[0].set_xlim(0, 3_000)
-        
+
         # Gráfico velocidad
         self.axs[1].set_title('Velocidad')
         self.axs[1].set_ylabel(r"$u$")
@@ -67,7 +72,7 @@ class ARZ(ABC):
 
         # Plotea lineas
         self.p_1, = self.axs[0].plot(self.x, self.Q[0]/rhomax, color="r")
-        self.p_2, = self.axs[1].plot(self.x, u(self.Q[0], self.Q[1], U), color="b")
+        self.p_2, = self.axs[1].plot(self.x, u(self.Q[0], self.Q[1], self.h), color="b")
 
         self.animation = animation.FuncAnimation(
             self.fig, self.update, frames=50, interval=1)#, blit=True)
@@ -158,17 +163,18 @@ class ARZ(ABC):
         # No actualiza
         if not self.started:
             self.p_1.set_ydata(self.Q[0]/rhomax)
-            self.p_2.set_ydata(u(self.Q[0], self.Q[1], U))
+            self.p_2.set_ydata(u(self.Q[0], self.Q[1], self.h))
             return [self.p_1, self.p_2,]
 
         # Actualiza segun condicion CFL
-        self.dt = cfl(self.dt, self.dx, self.Q)
+        self.dt = cfl(self.dt, self.dx, self.Q, self.I_plus)
         self.t += self.dt
+
         # Lambda
         l = self.dt/self.dx
 
         # Paso de Godunov
-        self.Q = self.Q - l * F(self.Q, self.N, self.U, l)
+        self.Q = self.Q - l * F(self.Q, self.N, self.U, self.h, l)
 
         # Agrega no homogeneidad
         rho_sig, y_sig = self.Q
@@ -187,7 +193,7 @@ class ARZ(ABC):
 
         # Actualiza gráfico
         self.p_1.set_ydata(self.Q[0]/rhomax)
-        self.p_2.set_ydata(u(self.Q[0], self.Q[1], U))
+        self.p_2.set_ydata(u(self.Q[0], self.Q[1], self.h))
         self.axs[0].set_title('Densidad t=' + str("%.2f" % self.t))
         self.axs[1].set_title('Velocidad t=' + str("%.2f" % self.t))
         return [self.p_1, self.p_2,]

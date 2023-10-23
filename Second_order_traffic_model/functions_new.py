@@ -5,8 +5,9 @@ from scipy.optimize import newton
 from scipy.interpolate import interp1d
 
 # Parámetros
-gamm = 1/2
-beta = 8
+gamm_1 = 1/5
+gamma_2 = 1/10
+beta = 12 #8
 umax = 20
 rhomax = 1/7.5
 c = 0.078 * umax * rhomax
@@ -29,18 +30,18 @@ def y_u(rho, u, h):#U):
 
 # Flujo del modelo
 # TODO: Verificar que funciona
-def flux(Q, U):
+def flux(Q, h):
     
     # Rescata variables
     rho, y = Q
     
     # Obtiene u en funcion de rho e y
-    u_ = u(rho, y, U)
+    u_ = u(rho, y, h)
     return np.array([rho * u_, y * u_])
 
 
 # Flujo de Godunov de primer orden
-def F(Q, N, U, l):
+def F(Q, N, U, h, l):
     
     # Guarda flujo en un arreglo
     F_ = np.zeros(Q.shape)
@@ -53,11 +54,11 @@ def F(Q, N, U, l):
         Q_right = Q[:, i+1]
         
         # Problema de Riemann en cada vecino
-        w_left = w(Q_left, Q_i, U)
-        w_right = w(Q_i, Q_right, U)
+        w_left = w(Q_left, Q_i, U, h)
+        w_right = w(Q_i, Q_right, U, h)
         
         # Evalúa en el flujo del modelo
-        F_[:, i] = flux(w_right, U) - flux(w_left, U)
+        F_[:, i] = flux(w_right, h) - flux(w_left, h)
     
     return F_
 
@@ -77,33 +78,41 @@ def density_integral(x, dx, N_t, Q):
 
 # Funciones del modelo
 # Función de duda
-def h(rho, rho_max=rhomax, gamma=gamm):
-    output = beta * (rho_max/(rho_max - rho))**gamma
+def h(rho, rho_max=rhomax, gamma_1=gamm_1, gamma_2=gamma_2, u_max=umax):
+    #rho_bar = rho/rho_max
+    #output = beta * ((rho_bar**gamma_1)/((1 - rho_bar)**gamma_2))
+    output = u_max - U(rho)
     return output
 
 # Función g
 def g(y, b=b, l=l):
-    output = np.sqrt(1 + ((y-b)/l)**2 )
+    output = np.sqrt(1 + ((y-b)/l)**2)
     return output
+
 
 # Diagrama fundamental
 def Q_e(rho, rho_max=rhomax, c=c):
     output = c * (g(0) + (((g(1) - g(0))* rho/rho_max)) - g(rho/rho_max))
     return output
 
+
 # Derivada de g
 def g_prime(y, b=b, l=l):
     output = (1/l**2) * ((y-b)/ np.sqrt(1 + ((y+b)/l)**2)) 
     return output
+
 
 # Derivada de Q
 def Q_prime(rho, rho_max=rhomax, c=c):
     output = c * (((g(1) - g(0))/rho_max) - (g_prime(rho/rho_max)/rho_max))
     return output
 
+
 # Velocidad de equilibrio
 def U(rho, u_max=umax):
-    return Q_e(rho)/rho
+    output = Q_e(rho)/rho
+    return output
+
 
 # Derivada de la velocidad de equilibrio
 def U_prime(rho):
@@ -140,7 +149,8 @@ Q_p_inv = interp1d(zs_Q, Q_p_inv_to_poly)
 
 
 # Solución problema de Riemann
-def w(Q_l, Q_r, U, u_max=umax, gamma=gamm, rho_max=rhomax):
+# TODO: Revisar
+def w(Q_l, Q_r, U, h, u_max=umax, rho_max=rhomax):
     
     # Rescata variables a la izquierda
     rho_l, y_l = Q_l
@@ -149,8 +159,8 @@ def w(Q_l, Q_r, U, u_max=umax, gamma=gamm, rho_max=rhomax):
     rho_r, y_r = Q_r
       
     # Obtiene velocidades
-    u_l = u(rho_l, y_l, U)
-    u_r = u(rho_r, y_r, U)  
+    u_l = u(rho_l, y_l, h)
+    u_r = u(rho_r, y_r, h)  
 
     if u_r - u_l + U(rho_l) > u_max:
         
@@ -205,27 +215,25 @@ def w(Q_l, Q_r, U, u_max=umax, gamma=gamm, rho_max=rhomax):
             u_w = u_r
             rho_w = rho_max # podria dar problema por la elección de Q_e
 
-    y_w = y_u(rho_w, u_w, U)
+    y_w = y_u(rho_w, u_w, h)
 
     return np.array([rho_w, y_w])
 
 
 
 # Condición CFL
-def cfl(dt, dx, Q, eps=1e-2, u_max=umax, rho_max=rhomax):
+def cfl(dt, dx, Q, I_plus, eps=1e-2, u_max=umax, rho_max=rhomax):
     rho, y = Q
     zero_rho = rho[np.isclose(rho, 0)]
 
     # No hay densidad 0
     if len(zero_rho) == 0:
-        u_ = u(rho, y, U)
+        u_ = u(rho, y, h)
     
         l_max = np.max(u_)
-        #Q_e_list = np.array([Q_e(rh) for rh in rho])
-        #I_max = np.max(np.fabs(rho * u_ - Q_e_list))
 
         # Podría dar problemas
-        new_dt = dx/(2*l_max) #dx/(2* (u_max + np.max([Q_prime(rho_max), I_max])))
+        new_dt =   dx/(2*(l_max + np.max([-Q_prime(rho_max), I_plus]))) #dx/(2*l_max)
     
         # Condición si nuevo dt es mayor
         if new_dt > dt and dt != 0:

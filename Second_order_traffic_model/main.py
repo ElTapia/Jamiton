@@ -10,18 +10,26 @@ from functions_new import *
 
 # Parámetros
 xl = 0
-xr = 5_000
-dx = 20
+xr = 200 #5_000
+dx = 3
 tau= 5
 
 rho_0 = 0.1*rhomax
 u_0 = 5
-y_0 = y_u(rho_0, u_0, U)
+y_0 = y_u(rho_0, u_0, h)
 Q_0 = [rho_0, y_0]
 
 x = np.linspace(xl, xr, (xr-xl)//dx)
-Q_0_ = Q_0_3(x, h)
-Q_0_[0] = Q_0_[0]
+
+
+#Q_0_ = Q_0_1(x, h)
+#Q_0_ = Q_0_2(x, h)
+#Q_0_ = Q_0_4(x, h)
+
+rho_init = 0.3
+#Q_0_ = Q_0_3(x, h, rho_init)
+Q_0_ = Q_0_5(x, h, rho_init)
+#Q_0_[0] = Q_0_[0]
 
 #rho_izq = 0.4
 #u_izq = 8
