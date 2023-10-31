@@ -52,7 +52,7 @@ def Q_0_3(x, h, rho_init):
     
     # Gaussiana centrada en 1500
     rho_0 = (np.exp(-((x-400)**2)/20_000)/6+rho_init) * rhomax #np.exp(-x**2/(2*2.7**2))/(2.7*np.sqrt(2*np.pi))
-    
+
     # Menor velocidad en mayor densidad
     u_0 = 1/rho_0
     

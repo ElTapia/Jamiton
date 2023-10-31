@@ -8,22 +8,20 @@ from scipy.interpolate import interp1d
 gamm_1 = 1/5
 gamma_2 = 1/10
 beta = 12 #8
-umax = 20
+umax = 19.2 #20
 rhomax = 1/7.5
 c = 0.078 * umax * rhomax
 b = 1/3
 l = 1/10
 
 # Define u en función de rho e y
-# TODO: Cambiar a función h
-def u(rho, y, h):#U):
+def u(rho, y, h):
     output = y/rho - h(rho)
     return output
 
 
 # Define y en función de rho y u
-# TODO: Cambiar a función h
-def y_u(rho, u, h):#U):
+def y_u(rho, u, h):
     output = rho*(u + h(rho))
     return output
 
@@ -36,16 +34,17 @@ def flux(Q, h):
     rho, y = Q
     
     # Obtiene u en funcion de rho e y
-    u_ = u(rho, y, h)
-    return np.array([rho * u_, y * u_])
+    #u_ = u(rho, y, h)
+
+    return np.array([y-rho*h(rho), (y**2)/rho - h(rho)*y]) #np.array([rho * u_, y * u_])
 
 
 # Flujo de Godunov de primer orden
 def F(Q, N, U, h, l):
-    
+
     # Guarda flujo en un arreglo
     F_ = np.zeros(Q.shape)
-    
+
     for i in range(1, N-1):
         
         # Rescata actual y vecinos
@@ -56,10 +55,21 @@ def F(Q, N, U, h, l):
         # Problema de Riemann en cada vecino
         w_left = w(Q_left, Q_i, U, h)
         w_right = w(Q_i, Q_right, U, h)
-        
+
         # Evalúa en el flujo del modelo
         F_[:, i] = flux(w_right, h) - flux(w_left, h)
-    
+
+    # Asume condiciones de borde periódicas
+    Q_0 = Q[:, 0]
+    Q_1 = Q[:, 1]
+    Q_ult = Q[:, -1]
+    Q_pen = Q[:, -2]
+
+    w_right_0 = w(Q_0, Q_1, U, h)
+    w_left_pen = w(Q_pen, Q_ult, U, h)
+
+    F_[:, 0] = flux(w_right_0, h) - flux(w_left_pen, h)
+
     return F_
 
 
@@ -79,10 +89,36 @@ def density_integral(x, dx, N_t, Q):
 # Funciones del modelo
 # Función de duda
 def h(rho, rho_max=rhomax, gamma_1=gamm_1, gamma_2=gamma_2, u_max=umax):
-    #rho_bar = rho/rho_max
-    #output = beta * ((rho_bar**gamma_1)/((1 - rho_bar)**gamma_2))
-    output = u_max - U(rho)
-    return output
+
+    if type(rho) is float or type(rho) is np.float64:
+        rho = np.array(rho)
+
+    def h_aux(rho):
+        rho_bar = rho/rho_max
+        output = beta * ((rho_bar**gamma_1)/((1 - rho_bar)**gamma_2))
+        return output
+
+
+    # Alcanza rho_max
+    if rho_max in rho:
+
+        # Arreglo auxiliar
+        output = np.empty_like(rho, dtype=float)
+
+        # Busca valores donde se alcanza rhomax
+        mask = np.isclose(rho, rho_max)
+
+        # rho es rhomax
+        output[mask] = u_max - U(rho[mask]) 
+
+        #rho es distinto a rhomax
+        output[~mask] = h_aux(rho[~mask])
+        
+        return output
+
+    return h_aux(rho)
+
+
 
 # Función g
 def g(y, b=b, l=l):
@@ -157,7 +193,7 @@ def w(Q_l, Q_r, U, h, u_max=umax, rho_max=rhomax):
     
     # Rescata variables a la derecha
     rho_r, y_r = Q_r
-      
+
     # Obtiene velocidades
     u_l = u(rho_l, y_l, h)
     u_r = u(rho_r, y_r, h)  
@@ -169,14 +205,14 @@ def w(Q_l, Q_r, U, h, u_max=umax, rho_max=rhomax):
         if l_1_l <= 0:
             rho_w = Q_p_inv(-u_l + U(rho_l))
             u_w = U(rho_w) + u_l - U(rho_l)
-        
+
         else:
             rho_w = rho_l
             u_w = u_l
     
-    elif 0<= u_r - u_l + U(rho_l) and u_r - u_l + U(rho_l) < -u_max:
+    elif 0 <= u_r - u_l + U(rho_l) and u_r - u_l + U(rho_l) <= u_max:
         u_0 = u_r
-        rho_0 = U_inv(u_r-u_l+U(rho_l))
+        rho_0 = U_inv(u_r - u_l + U(rho_l))
 
         if u_r <= u_l:
             q_0 = rho_0 * u_r
@@ -197,7 +233,7 @@ def w(Q_l, Q_r, U, h, u_max=umax, rho_max=rhomax):
                 rho_w = rho_l
                 u_w = u_l
 
-            elif l_1 < 0  and 0<= l_1_0:
+            elif l_1 < 0  and 0 <= l_1_0:
                 rho_w = Q_p_inv(-u_l + U(rho_l))
                 u_w = U(rho_w) + u_l - U(rho_l)
 
@@ -207,6 +243,7 @@ def w(Q_l, Q_r, U, h, u_max=umax, rho_max=rhomax):
                 u_w = u_0
 
     else:
+
         if u_r >= (rho_l * u_l)/rho_max:
             u_w = u_l
             rho_w = rho_l
@@ -233,7 +270,7 @@ def cfl(dt, dx, Q, I_plus, eps=1e-2, u_max=umax, rho_max=rhomax):
         l_max = np.max(u_)
 
         # Podría dar problemas
-        new_dt =   dx/(2*(l_max + np.max([-Q_prime(rho_max), I_plus]))) #dx/(2*l_max)
+        new_dt =  dx/(2*l_max) #dx/(2*(u_max + np.max([-Q_prime(rho_max), I_plus]))) #
     
         # Condición si nuevo dt es mayor
         if new_dt > dt and dt != 0:

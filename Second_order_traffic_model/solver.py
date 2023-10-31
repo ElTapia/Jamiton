@@ -29,13 +29,12 @@ class ARZ(ABC):
         self.x = np.linspace(xl, xr, self.N)
     
         # Condición inicial
-        # Asigna mismos valores en toda la grilla
         self.Q_0 = Q_0
-        self.Q = np.zeros([2, self.N])#len(self.x)])
-        
+        self.Q = np.zeros([2, self.N])
+
         # Asigna valor inicial
-        self.Q[0] = self.Q[0] + self.Q_0[0] #Q_0(self.x, self.U)
-        self.Q[1] = self.Q[1] + self.Q_0[1]
+        self.Q[0] += self.Q_0[0]
+        self.Q[1] += self.Q_0[1]
 
         # Velocidad relativa inicial
         # Sirve para condición CFL
@@ -57,7 +56,7 @@ class ARZ(ABC):
         
         # Gráfico densidad
         self.axs[0].set_title('Densidad')
-        self.axs[0].set_ylabel(r"$\rho$")
+        self.axs[0].set_ylabel(r"$\rho/\rho_{max}$")
         self.axs[0].set_xlabel("x")
         self.axs[0].set_ylim(-0.1, 1.0)
         #self.axs[0].set_xlim(0, 3_000)
@@ -146,8 +145,8 @@ class ARZ(ABC):
         self.Q[0] = self.Q_0[0]
         self.Q[1] = self.Q_0[1]
         self.t = 0
-        self.started = not self.started
         self.dt=0
+        self.started = not self.started
 
 
     # Función para empezar simulación
@@ -155,7 +154,7 @@ class ARZ(ABC):
         if not self.started:
             self.Q[0][self.N//4] += self.rho_per*rhomax
             self.Q[1][self.N//4] += self.u_per 
-            
+
         self.started = not self.started  
 
     def update(self, i):
@@ -176,17 +175,8 @@ class ARZ(ABC):
         # Paso de Godunov
         self.Q = self.Q - l * F(self.Q, self.N, self.U, self.h, l)
 
-        # Agrega no homogeneidad
-        rho_sig, y_sig = self.Q
-        alpha = self.dt/self.tau
-
         # Resuelve termino de relajación
-        # TODO: Cambiar a modelo ARZ de Seibold
-        #y_sig__ = y_sig * (1 - self.dt/(2 *self.tau * rho_sig))
-        #y_sig_ = y_sig - ((self.dt * y_sig__)/(self.tau * rho_sig))
-        y_sig_ = y_sig * (1 - alpha) + alpha * (rho_sig * self.U(rho_sig) + self.h(rho_sig))
-        
-        self.Q[1] = y_sig_
+        self.relaxation_term()
 
         # Agrega condiciones de borde
         self.border_conditions()
@@ -202,6 +192,28 @@ class ARZ(ABC):
     @abstractmethod
     def border_conditions(self):
         pass
+    
+    # Término de relajación
+    def relaxation_term(self):
+        # Agrega no homogeneidad
+        rho_sig, y_sig = self.Q
+        alpha = self.dt/self.tau
+        u_sig = u(rho_sig, y_sig, self.h)
+
+        # TODO: Agregar difusión usando método implícito
+        #y_sig__ = y_sig * (1 - self.dt/(2 *self.tau * rho_sig))
+        #y_sig_ = y_sig - ((self.dt * y_sig__)/(self.tau * rho_sig))
+        #y_sig_ = y_sig * (1 - alpha) + alpha  * rho_sig * (self.U(rho_sig) + self.h(rho_sig)) # "jamitinos"
+        #y_sig_ = alpha * (self.U(rho_sig) + self.h(rho_sig)) + y_sig * (1 - alpha/rho_sig)
+        #y_sig_ = alpha * (U(rho_sig) - u_sig) + y_sig
+
+        # Explícito
+        #y_sig_ = alpha * rho_sig * (self.U(rho_sig) + self.h(rho_sig)) + (1 - alpha) * y_sig
+
+        # Implícito
+        y_sig_ = (alpha/(alpha+1)) * rho_sig * (self.U(rho_sig) + self.h(rho_sig)) + (1/(alpha+1)) * y_sig
+
+        self.Q[1] = y_sig_
 
 
 # ARZ con condiciones de borde periódicas
@@ -214,17 +226,16 @@ class ARZ_periodic(ARZ):
     
     # Especializa condiciones de borde
     def border_conditions(self):
-        self.Q[:, 0] = self.Q[:, -2]
-        self.Q[:, -1] = self.Q[:, 1]
+        self.Q[:, -1] = self.Q[:, 0]
 
 
 # ARZ con borde Dirichlet y Neumann
 class ARZ_infinite(ARZ):
     
-    def __init__(self, Q_0, dx, xl, xr, U, tau, Q_izq):
+    def __init__(self, Q_0, dx, xl, xr, U, h, tau, Q_izq):
         
         # Init clase padre
-        super().__init__(Q_0, dx, xl, xr, U, tau)
+        super().__init__(Q_0, dx, xl, xr, U, h, tau)
         self.Q_izq = Q_izq
     
     # Especializa condiciones de borde
