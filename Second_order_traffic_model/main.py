@@ -27,8 +27,8 @@ x = np.linspace(xl, xr, (xr-xl)//dx)
 #Q_0_ = Q_0_4(x, h)
 
 rho_init = 0.3
-Q_0_ = Q_0_3(x, h, rho_init)
-#Q_0_ = Q_0_5(x, h, rho_init)
+#Q_0_ = Q_0_3(x, h, rho_init)
+Q_0_ = Q_0_5(x, h, rho_init)
 #Q_0_[0] = Q_0_[0]
 
 #rho_izq = 0.3*rhomax

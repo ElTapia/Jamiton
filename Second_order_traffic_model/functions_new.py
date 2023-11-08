@@ -95,28 +95,28 @@ def h(rho, rho_max=rhomax, gamma_1=gamm_1, gamma_2=gamma_2, u_max=umax):
 
     def h_aux(rho):
         rho_bar = rho/rho_max
-        output = beta * ((rho_bar**gamma_1)/((1 - rho_bar)**gamma_2))
+        output = beta * ((rho_bar**gamma_1)/(((1 - rho_bar)**2 + 1e-5**2)**(gamma_2/2)))
         return output
 
 
     # Alcanza rho_max
-    if rho_max in rho:
+    #if rho_max in rho:
 
         # Arreglo auxiliar
-        output = np.empty_like(rho, dtype=float)
+    #   output = np.empty_like(rho, dtype=float)
 
         # Busca valores donde se alcanza rhomax
-        mask = np.isclose(rho, rho_max)
+    #    mask = np.isclose(rho, rho_max)
 
         # rho es rhomax
-        output[mask] = u_max - U(rho[mask]) 
+    #    output[mask] = u_max - U(rho[mask]) 
 
         #rho es distinto a rhomax
-        output[~mask] = h_aux(rho[~mask])
+    #    output[~mask] = h_aux(rho[~mask])
         
-        return output
+    #    return output
 
-    return h_aux(rho)
+    return h_aux(rho) #(rho/rho_max)**2#
 
 
 
@@ -146,13 +146,13 @@ def Q_prime(rho, rho_max=rhomax, c=c):
 
 # Velocidad de equilibrio
 def U(rho, u_max=umax):
-    output = Q_e(rho)/rho
+    output = Q_e(rho)/(np.sqrt((rho**2 + 1e-5**2)))
     return output
 
 
 # Derivada de la velocidad de equilibrio
 def U_prime(rho):
-    output = (Q_prime(rho) - U(rho))/rho
+    output = (Q_prime(rho) - U(rho))/np.sqrt((rho**2 + 1e-5**2))
     return output
 
 
@@ -160,7 +160,7 @@ def U_prime(rho):
 def U_inv_points(z, rho_max=rhomax):
     z = float(z)
     U_to_inv = lambda x: U(x)-z
-    
+
     rho = np.real(newton(U_to_inv, 0.5*rho_max))
     return rho
 
@@ -266,11 +266,12 @@ def cfl(dt, dx, Q, I_plus, eps=1e-2, u_max=umax, rho_max=rhomax):
     # No hay densidad 0
     if len(zero_rho) == 0:
         u_ = u(rho, y, h)
-    
-        l_max = np.max(u_)
+
+
+        l_max = np.max([np.max(u_), np.max(u_-2*rho**2/rho_max)])
 
         # Podría dar problemas
-        new_dt =  dx/(2*l_max) #dx/(2*(u_max + np.max([-Q_prime(rho_max), I_plus]))) #
+        new_dt = dx/(2*(u_max + np.max([-Q_prime(rho_max), I_plus]))) #dx/(2*l_max)
     
         # Condición si nuevo dt es mayor
         if new_dt > dt and dt != 0:

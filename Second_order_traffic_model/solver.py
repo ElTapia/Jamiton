@@ -1,8 +1,13 @@
 # Solver general de godunov
 import numpy as np
+import scipy as sp
+import scipy.sparse as spsp
+import scipy.sparse.linalg as spl
+
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.widgets import TextBox
+
 from abc import ABC, abstractmethod
 
 # Funciones de simulación
@@ -11,20 +16,23 @@ from functions_new import *
 # Implementa Godunov
 # Condiciones de borde se implementan en clases hijas
 class ARZ(ABC):
-    
+
     def __init__(self, Q_0, dx, xl, xr, U, h, tau):
         # Guarda variables
         self.dx = dx
         self.U = U
         self.h = h
         self.tau = tau
-        
+
         # Largo de la grilla
         self.L = xr - xl
-        
+
         # Numero de puntos
         self.N =  int(self.L//self.dx)
-    
+
+        # Epsilon para difusion
+        self.eps = 30#1e-2
+
         # Grilla
         self.x = np.linspace(xl, xr, self.N)
     
@@ -51,9 +59,9 @@ class ARZ(ABC):
         ax1 =  self.fig.add_subplot(self.gs[0:11, 0:8])
         ax2 = self.fig.add_subplot(self.gs[0:11, 9:13])
         slider_ax = self.fig.add_subplot(self.gs[12:13, 2:11])
-        
+
         self.axs = [ax1, ax2, slider_ax]
-        
+
         # Gráfico densidad
         self.axs[0].set_title('Densidad')
         self.axs[0].set_ylabel(r"$\rho/\rho_{max}$")
@@ -65,13 +73,14 @@ class ARZ(ABC):
         self.axs[1].set_title('Velocidad')
         self.axs[1].set_ylabel(r"$u$")
         self.axs[1].set_xlabel("x")
-        self.axs[1].set_ylim(-10, 80.0)
+        self.axs[1].set_ylim(0, 25)
         #self.axs[1].set_xlim(0, 3_000)
 
 
         # Plotea lineas
         self.p_1, = self.axs[0].plot(self.x, self.Q[0]/rhomax, color="r")
         self.p_2, = self.axs[1].plot(self.x, u(self.Q[0], self.Q[1], self.h), color="b")
+        self.axs[1].hlines(umax, xl, xr, ls="--")
 
         self.animation = animation.FuncAnimation(
             self.fig, self.update, frames=50, interval=1)#, blit=True)
@@ -98,8 +107,8 @@ class ARZ(ABC):
         else:
             self.animation.pause()
         self.paused = not self.paused
-        
-    
+
+
     # Detecta botones presionados
     def press_event(self, event):
         if event.key == "enter":
@@ -110,16 +119,16 @@ class ARZ(ABC):
 
         if event.key == "down":
             self.toggle_rho_down()
-            
+
         if event.key == "e":
             self.toggle_u_up()
 
         if event.key == "d":
             self.toggle_u_down()
-            
+
         if event.key == "r":
             self.toggle_reset()
-        
+
         if event.key == "p":
             self.toggle_pause()
 
@@ -131,14 +140,14 @@ class ARZ(ABC):
     # Disminuye densidad
     def toggle_rho_down(self, *args, **kwargs):
         self.Q[0] -= 0.05*rhomax
-    
+
     # Aumenta velocidad
     def toggle_u_up(self, *args, **kwargs):
-        self.Q[1] += 0.5
+        self.Q[1] += 0.2
 
     # Disminuye velocidad
     def toggle_u_down(self, *args, **kwargs):
-        self.Q[1] -= 0.5
+        self.Q[1] -= 0.2
 
     # Reinicia simulación
     def toggle_reset(self, *args, **kwargs):
@@ -158,7 +167,7 @@ class ARZ(ABC):
         self.started = not self.started  
 
     def update(self, i):
-        
+
         # No actualiza
         if not self.started:
             self.p_1.set_ydata(self.Q[0]/rhomax)
@@ -175,11 +184,13 @@ class ARZ(ABC):
         # Paso de Godunov
         self.Q = self.Q - l * F(self.Q, self.N, self.U, self.h, l)
 
-        # Resuelve termino de relajación
-        self.relaxation_term()
-
         # Agrega condiciones de borde
         self.border_conditions()
+
+        # Resuelve termino de relajación
+        self.relaxation_term(self.eps)
+        #self.eps *= 1e-1
+        #self.relaxation_term_antiguo()
 
         # Actualiza gráfico
         self.p_1.set_ydata(self.Q[0]/rhomax)
@@ -192,9 +203,9 @@ class ARZ(ABC):
     @abstractmethod
     def border_conditions(self):
         pass
-    
+
     # Término de relajación
-    def relaxation_term(self):
+    def relaxation_term_antiguo(self):
         # Agrega no homogeneidad
         rho_sig, y_sig = self.Q
         alpha = self.dt/self.tau
@@ -214,16 +225,87 @@ class ARZ(ABC):
         y_sig_ = (alpha/(alpha+1)) * rho_sig * (self.U(rho_sig) + self.h(rho_sig)) + (1/(alpha+1)) * y_sig
 
         self.Q[1] = y_sig_
+        
+
+    # Agrega pequeña difusión
+    def relaxation_term(self, eps):
+
+        # Función de relajación
+        def rlx_func(rho):
+            return rho * (self.U(rho) + self.h(rho))
+
+        # Parámetros
+        rho, y = self.Q
+        l = self.dt/(self.dx**2)    # Va cambiando con la condición CFL
+        alpha = self.dt / self.tau  # Va cambiando con la condición CFL
+
+        # Vectores de unos para diagonales
+        e = np.ones(self.N) 
+        f = np.ones(self.N-1)
+        offset = [-1,0,1]
+        I = sp.sparse.identity(self.N)
+
+        #### Actualizacion rho ####
+
+        # Matriz de primera actualizacion
+        k_rho_1 = np.array([-f*eps*l/2, e+eps*l, -f*eps*l/2], dtype= object)
+        A_rho_1 = sp.sparse.diags(k_rho_1,offset)
+        A_rho_1 = A_rho_1.tolil()
+        A_rho_1[0, -1] = -eps * l / 2 # Agregan periodicidad
+        A_rho_1[-1, 0] = -eps * l / 2
+
+        # Primera actualización
+        B_rho_1 = 2 * I - A_rho_1
+        rho_1 = sp.sparse.linalg.spsolve(A_rho_1, B_rho_1 * rho)
+
+        # Matriz de segunda actualizacion
+        k_rho_2 = np.array([-f*eps*l/3, e+2*eps*l/3, -f*eps*l/3], dtype= object) 
+        A_rho_2 = sp.sparse.diags(k_rho_2, offset)
+        A_rho_2 = A_rho_2.tolil()
+        A_rho_2[0, -1] = -eps * l / 3 # Agregan periodicidad
+        A_rho_2[-1, 0] = -eps * l / 3
+
+        # Segunda actualización
+        rho_sig = sp.sparse.linalg.spsolve(A_rho_2, (4 * rho_1 - rho)/3)
+
+        #### Actualizacion y ####
+
+        # Matriz de primera actualizacion
+        k_y_1 = np.array([-f*eps*l/2, e+(alpha/2)+(eps*l), -f*eps*l/2], dtype= object)
+        A_y_1 = sp.sparse.diags(k_y_1,offset)
+        A_y_1 = A_y_1.tolil()
+        A_y_1[0, -1] = -eps * l / 2 # Agregan periodicidad
+        A_y_1[-1, 0] = -eps * l / 2
+
+        # Primera actualización
+        B_y_1 = 2 * I - A_y_1
+        B_der_y_1 = B_y_1 * y + (alpha/2) * (rlx_func(rho) + rlx_func(rho_1))
+        y_1 = sp.sparse.linalg.spsolve(A_y_1, B_der_y_1)
+
+        # Matriz de segunda actualizacion
+        k_y_2 = np.array([-f*eps*l/3, e+(2/3*eps*l)+(alpha/3), -f*eps*l/3], dtype= object) 
+        A_y_2 = sp.sparse.diags(k_y_2, offset)
+        A_y_2 = A_y_2.tolil()
+        A_y_2[0, -1] = -eps * l / 3 # Agregan periodicidad
+        A_y_2[-1, 0] = -eps * l / 3
+
+        # Segunda actualización
+        B_der_y_2 = alpha/3 * rlx_func(rho_sig) + (4 * y_1 - y)/3
+        y_sig = sp.sparse.linalg.spsolve(A_y_2, B_der_y_2)
+
+        # Asigna
+        self.Q = np.array([rho_sig, y_sig])
+
 
 
 # ARZ con condiciones de borde periódicas
 class ARZ_periodic(ARZ):
-    
+
     def __init__(self, Q_0, dx, xl, xr, U, h, tau):
-        
+
         # Init clase padre
         super().__init__(Q_0, dx, xl, xr, U, h, tau)
-    
+
     # Especializa condiciones de borde
     def border_conditions(self):
         self.Q[:, -1] = self.Q[:, 0]
@@ -231,16 +313,16 @@ class ARZ_periodic(ARZ):
 
 # ARZ con borde Dirichlet y Neumann
 class ARZ_infinite(ARZ):
-    
+
     def __init__(self, Q_0, dx, xl, xr, U, h, tau, Q_izq):
-        
+
         # Init clase padre
         super().__init__(Q_0, dx, xl, xr, U, h, tau)
         self.Q_izq = Q_izq
-    
+
     # Especializa condiciones de borde
     def border_conditions(self):
-        
+
         # Condición Dirichlet a la izquierda
         # Entran autos por un tiempo
         #if 0<self.t and self.t<50:
