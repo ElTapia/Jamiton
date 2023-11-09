@@ -31,7 +31,7 @@ class ARZ(ABC):
         self.N =  int(self.L//self.dx)
 
         # Epsilon para difusion
-        self.eps = 30#1e-2
+        self.eps = 30 #50
 
         # Grilla
         self.x = np.linspace(xl, xr, self.N)
@@ -184,13 +184,14 @@ class ARZ(ABC):
         # Paso de Godunov
         self.Q = self.Q - l * F(self.Q, self.N, self.U, self.h, l)
 
-        # Agrega condiciones de borde
-        self.border_conditions()
 
         # Resuelve termino de relajación
         self.relaxation_term(self.eps)
-        #self.eps *= 1e-1
+        #self.eps *= 0.5
         #self.relaxation_term_antiguo()
+
+        # Agrega condiciones de borde
+        self.border_conditions()
 
         # Actualiza gráfico
         self.p_1.set_ydata(self.Q[0]/rhomax)
@@ -222,10 +223,10 @@ class ARZ(ABC):
         #y_sig_ = alpha * rho_sig * (self.U(rho_sig) + self.h(rho_sig)) + (1 - alpha) * y_sig
 
         # Implícito
-        y_sig_ = (alpha/(alpha+1)) * rho_sig * (self.U(rho_sig) + self.h(rho_sig)) + (1/(alpha+1)) * y_sig
+        y_sig_ = (alpha/(1+alpha)) * rho_sig * (self.U(rho_sig) + self.h(rho_sig)) + (1/(1+alpha)) * y_sig
 
         self.Q[1] = y_sig_
-        
+
 
     # Agrega pequeña difusión
     def relaxation_term(self, eps):

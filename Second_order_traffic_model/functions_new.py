@@ -8,7 +8,7 @@ from scipy.interpolate import interp1d
 gamm_1 = 1/5
 gamma_2 = 1/10
 beta = 12 #8
-umax = 19.2 #20
+umax = 20 #19.2 #20
 rhomax = 1/7.5
 c = 0.078 * umax * rhomax
 b = 1/3
@@ -116,7 +116,7 @@ def h(rho, rho_max=rhomax, gamma_1=gamm_1, gamma_2=gamma_2, u_max=umax):
         
     #    return output
 
-    return h_aux(rho) #(rho/rho_max)**2#
+    return 8*(rho/(rho_max-rho))**(1/2) #h_aux(rho) #
 
 
 
@@ -271,7 +271,7 @@ def cfl(dt, dx, Q, I_plus, eps=1e-2, u_max=umax, rho_max=rhomax):
         l_max = np.max([np.max(u_), np.max(u_-2*rho**2/rho_max)])
 
         # Podría dar problemas
-        new_dt = dx/(2*(u_max + np.max([-Q_prime(rho_max), I_plus]))) #dx/(2*l_max)
+        new_dt = dx/(2*u_max) #dx/(2*(u_max + np.max([-Q_prime(rho_max), I_plus]))) #
     
         # Condición si nuevo dt es mayor
         if new_dt > dt and dt != 0:
