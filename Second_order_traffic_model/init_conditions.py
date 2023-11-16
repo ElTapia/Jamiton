@@ -105,3 +105,30 @@ def Q_0_5(x, h, rho_init):
     Q_0_[1] = y_0
     
     return Q_0_
+
+
+# sexta condición inicial
+# doble Gaussiana
+def Q_0_6(x, h, rho_init):
+    
+    # Gaussiana centrada en 1500
+    rho_0_g1 = ((np.tanh(5*(x-100)+1) + np.tanh(1 - 5*(x-100))) + rho_init )*rhomax #(np.exp(-((x-3000)**2)/8_000)/6+rho_init/2) * rhomax #np.exp(-x**2/(2*2.7**2))/(2.7*np.sqrt(2*np.pi))
+    #rho_0_g2 = #(np.exp(-((x-4000)**2)/8_000)/6+rho_init/2) * rhomax
+    rho_0 = rho_0_g1# + rho_0_g2
+
+    # Menor velocidad en mayor densidad
+    u_0_g1 = -rho_0_g1 + 20#rho_0_g1*500 + 15
+    #u_0_g2 = 1/rho_0_g2-15
+
+    y_0_g1 =  rho_0_g1 * (u_0_g1 + h(rho_0_g1))
+    #y_0_g2 =  rho_0_g2 * (u_0_g2 + h(rho_0_g2))
+    
+    # y inicial en funcion de u y rho
+    y_0 = y_0_g1#/2 #+ y_0_g2/2
+
+    # Vector con codicion
+    Q_0_ = np.zeros([2, len(x)])
+    Q_0_[0] = rho_0
+    Q_0_[1] = y_0
+
+    return Q_0_

@@ -119,6 +119,12 @@ def h(rho, rho_max=rhomax, gamma_1=gamm_1, gamma_2=gamma_2, u_max=umax):
     return 8*(rho/(rho_max-rho))**(1/2) #h_aux(rho) #
 
 
+def h_prime(rho, rho_max=rhomax):
+    gamma = 1/2
+    beta = 8
+    output =  beta * gamma * (rho /(rho_max - rho))**(gamma-1) * rho_max / ((rho_max - rho)**2)
+    return output
+
 
 # Función g
 def g(y, b=b, l=l):
@@ -134,7 +140,7 @@ def Q_e(rho, rho_max=rhomax, c=c):
 
 # Derivada de g
 def g_prime(y, b=b, l=l):
-    output = (1/l**2) * ((y-b)/ np.sqrt(1 + ((y+b)/l)**2)) 
+    output = (1/l**2) * ((y-b)/ np.sqrt(1 + ((y-b)/l)**2)) 
     return output
 
 
@@ -175,7 +181,7 @@ def Q_p_inv_points(z, rho_max=rhomax):
     z = float(z)
     Q_to_inv = lambda x: Q_prime(x)-z
     
-    rho = np.real(newton(Q_to_inv, 0.5*rho_max))
+    rho = np.real(newton(Q_to_inv, 0.3*rho_max))
     return rho
 
 zs_Q = np.linspace(-2, umax, 50)
@@ -283,3 +289,31 @@ def cfl(dt, dx, Q, I_plus, eps=1e-2, u_max=umax, rho_max=rhomax):
     return new_dt
 
 
+############################### Variables lagrangeanas #########################################
+
+# Funciones del modelo
+def h_bar(v):
+    return h(1/v)
+
+def h_bar_prime(v):
+    output = -h_prime(1/v)/v**2 
+    return output
+
+def U_bar(v):
+    return U(1/v)
+
+def w(v, m, s):
+    output = U_bar(v) - (m * v + s)
+    return output
+
+def r(v, m):
+    output = m * h_bar(v) + m**2 * v
+    return output
+
+def r_prime(v, m):
+    output = m * h_bar_prime(v) + m**2
+    return output
+
+def ode_jam_v(x, v, tau, m, s):
+    output = w(v, m, s)/(r_prime(v, m) * v * tau)
+    return output

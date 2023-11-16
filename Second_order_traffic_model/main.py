@@ -12,7 +12,7 @@ from functions_new import *
 xl = 0
 xr = 6_000 #200 
 dx = 20
-tau= 3 #5
+tau= 5
 
 rho_0 = 0.1*rhomax
 u_0 = 5
@@ -27,10 +27,9 @@ x = np.linspace(xl, xr, (xr-xl)//dx)
 #Q_0_ = Q_0_4(x, h)
 
 rho_init = 0.3
-#Q_0_ = Q_0_3(x, h, rho_init)
+Q_0_ = Q_0_3(x, h, rho_init)
 #Q_0_ = Q_0_5(x, h, rho_init)
-#Q_0_[0] = Q_0_[0]
-Q_0_ = Q_0_6(x, h, rho_init)
+#Q_0_ = Q_0_6(x, h, rho_init)
 
 #rho_izq = 0.3*rhomax
 #u_izq = 30
