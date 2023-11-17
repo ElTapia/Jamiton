@@ -302,7 +302,7 @@ def h_bar_prime(v):
 def U_bar(v):
     return U(1/v)
 
-def w(v, m, s):
+def w_v(v, m, s):
     output = U_bar(v) - (m * v + s)
     return output
 
@@ -315,5 +315,5 @@ def r_prime(v, m):
     return output
 
 def ode_jam_v(x, v, tau, m, s):
-    output = w(v, m, s)/(r_prime(v, m) * v * tau)
+    output = w_v(v, m, s)/(r_prime(v, m) * v * tau)
     return output

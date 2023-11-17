@@ -31,7 +31,7 @@ class ARZ(ABC):
         self.N =  int(self.L//self.dx)
 
         # Epsilon para difusion
-        self.eps = 50#30 #50
+        self.eps = 40 #30 #50
 
         # Grilla
         self.x = np.linspace(xl, xr, self.N)

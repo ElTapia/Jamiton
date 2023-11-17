@@ -5,7 +5,6 @@ from scipy.interpolate import interp1d
 from scipy.integrate import solve_bvp, solve_ivp
 from adjustText import adjust_text
 from functions_new import *
-from init_conditions import *
 
 # Estilo de gráficos
 plt.style.use('bmh')
@@ -19,22 +18,22 @@ def plot_w(values_v, m, s, v_f):
 
     texts = []
     v_to_plot = np.linspace(8, v_f, 1_000)
-    plt.plot(v_to_plot, w(v_to_plot, m, s), label="w(v)", zorder=0, color="black", lw=1)
+    plt.plot(v_to_plot, w_v(v_to_plot, m, s), label="w(v)", zorder=0, color="black", lw=1)
 
     plt.hlines(0, 1, v_f, ls="--", label="Cero", zorder=1)
-    plt.scatter(v_s, w(v_s, m, s), color="red", zorder=2)
-    texts += [plt.annotate(r"$v_s$", (v_s, w(v_s, m, s)), fontsize=20)]
+    plt.scatter(v_s, w_v(v_s, m, s), color="red", zorder=2)
+    texts += [plt.annotate(r"$v_s$", (v_s, w_v(v_s, m, s)), fontsize=20)]
 
     # jamiton maximal
-    plt.scatter(v_M, w(v_M, m, s), color="green", zorder=2)
-    texts += [plt.annotate(r"$v_M$", (v_M, w(v_M, m, s)), fontsize=20)]
+    plt.scatter(v_M, w_v(v_M, m, s), color="green", zorder=2)
+    texts += [plt.annotate(r"$v_M$", (v_M, w_v(v_M, m, s)), fontsize=20)]
 
     plt.xlabel(r"$v$", fontsize=20)
     plt.ylabel(r"$w(v)$", fontsize=20)
     plt.legend(fontsize=12)
 
     plt.xlim(v_s/1.5, 1.4*v_M)
-    plt.ylim(w(v_s, m, s)-1.5, np.max(w(v_to_plot, m, s))+0.5)
+    plt.ylim(w_v(v_s, m, s)-1.5, np.max(w_v(v_to_plot, m, s))+0.5)
     adjust_text(texts, only_move={'points':'y', 'texts':'y'})
     plt.tick_params(left = False , labelleft = False , 
                     labelbottom = False, bottom = False) 
@@ -183,23 +182,23 @@ def plot_rho(sol_rho, values_rho, t_f, xs):
 
     # Jamiton actual y cadena
     texts = []
-    plt.plot(x_jam, rho_jam, zorder=1, label="Jamiton actual", color="brown")
-    plt.plot(x_to_per, rho_per(x_to_per), zorder=0, color="brown", ls="--", label="Cadena de jamitones")
+    plt.plot(x_jam, rho_jam/rhomax, zorder=1, label="Jamiton actual", color="brown")
+    plt.plot(x_to_per, rho_per(x_to_per)/rhomax, zorder=0, color="brown", ls="--", label="Cadena de jamitones")
 
     # Límites jamiton
-    plt.scatter(x_plus, rho_plus, zorder=2, color="green")
-    texts += [plt.annotate(r"$\rho_+$", (x_plus, rho_plus), fontsize=20)]
-    plt.scatter(x_minus, rho_minus, zorder=2, color="green")
-    texts += [plt.annotate(r"$\rho_-$", (x_minus, rho_minus), fontsize=20)]
-    plt.scatter(x_s, rho_s, zorder=2, color="red", label="Punto sónico")
-    texts += [plt.annotate(r"$\rho_s$", (x_s, rho_s), fontsize=20)]
+    plt.scatter(x_plus, rho_plus/rhomax, zorder=2, color="green")
+    texts += [plt.annotate(r"$\rho_+$", (x_plus, rho_plus/rhomax), fontsize=20)]
+    plt.scatter(x_minus, rho_minus/rhomax, zorder=2, color="green")
+    texts += [plt.annotate(r"$\rho_-$", (x_minus, rho_minus/rhomax), fontsize=20)]
+    plt.scatter(x_s, rho_s/rhomax, zorder=2, color="red", label="Punto sónico")
+    texts += [plt.annotate(r"$\rho_s$", (x_s, rho_s/rhomax), fontsize=20)]
 
     # Jamiton maximal
-    plt.plot(x_to_plot, rho_y, zorder=0, label="Jamiton maximal")
-    plt.scatter(0, rho_R, color="purple")
-    texts += [plt.annotate(r"$\rho_R$", (0, rho_R), fontsize=20)]
-    plt.hlines(rho_M, 0, t_f, color="purple", zorder=0, ls="--")
-    texts += [plt.annotate(r"$\rho_M$", (t_f, rho_M), fontsize=20)]
+    plt.plot(x_to_plot, rho_y/rhomax, zorder=0, label="Jamiton maximal")
+    plt.scatter(0, rho_R/rhomax, color="purple")
+    texts += [plt.annotate(r"$\rho_R$", (0, rho_R/rhomax), fontsize=20)]
+    plt.hlines(rho_M/rhomax, 0, t_f, color="purple", zorder=0, ls="--")
+    texts += [plt.annotate(r"$\rho_M$", (t_f, rho_M/rhomax), fontsize=20)]
 
     plt.xlabel(r"$x$", fontsize=20)
     plt.ylabel(r"$\rho(x)$", fontsize=20)
@@ -240,7 +239,7 @@ def plot_u(sol_u, values_u, t_f, xs):
     plt.scatter(x_plus, u_plus, zorder=2, color="green")
     texts += [plt.annotate(r"$u_+$", (x_plus, u_plus), fontsize=20)]
     plt.scatter(x_minus, u_minus, zorder=2, color="green")
-    texts += [plt.annotate(r"$u_-$", (x_minus, u_minus), fontsize=20)]
+    texts += [plt.annotate(r"$u_{-}$", (x_minus, u_minus), fontsize=20)]
     plt.scatter(x_s, u_s, zorder=2, color="red", label="Punto sónico")
     texts += [plt.annotate(r"$u_s$", (x_s, u_s), fontsize=20)]
 
@@ -308,7 +307,7 @@ def jam_gen(v_s, t_f, tau):
         pass
 
     # Jamiton maximal
-    v_M = newton(lambda v: w(v, m, s), 40)
+    v_M = newton(lambda v: w_v(v, m, s), 40)
     v_R = newton(lambda v: r(v, m) - r(v_M, m), 10)
 
     # Jamiton actual
@@ -363,18 +362,25 @@ def init_program(tau):
     rho_s *= rhomax
     v_s = 1/rho_s # Se necesita rho_s normalizado
 
+    # Genera jamitones
     values_v, values_rho, values_u, sol_v, sol_rho, sol_u, m, s = jam_gen(v_s, t_f, tau)
+
+    # Rescata x's
+    xs = find_xs(sol_v, values_v)
+    x_minus = xs[1]
+    x_plus = xs[2]
+
+    # Arreglo con jamiton
+    x_jam = np.linspace(x_plus, x_minus, 100)
+    print(sol_rho(x_plus)/rhomax, sol_rho(x_minus)/rhomax)
 
     # Plotea
     plotear = input("¿Desea graficar? (y/n): ")
     if plotear == "y":
-        xs = find_xs(sol_v, values_v)
         plot_w(values_v, m, s, v_f)
         plot_r(values_v, v_f, m, s)
         plot_v(sol_v, values_v, t_f, xs)
         plot_rho(sol_rho, values_rho, t_f, xs)
         plot_u(sol_u, values_u, t_f, xs)
 
-    return sol_rho, sol_u
-
-init_program(5)
+    return x_minus, x_plus, sol_rho, sol_u
