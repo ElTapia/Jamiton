@@ -107,6 +107,56 @@ def plot_r(values_v, v_f, m, s):
     plt.show()
 
 
+# Gráfico diagrama fundamental
+def plot_Q(values_v, m, s):
+    texts = []
+
+    # Vector con densidades
+    rhos = np.linspace(0, rhomax-1e-5, 1_000)
+    # Diagrama fundamental
+    plt.plot(rhos/rhomax, Q_e(rhos), zorder=0, color="black", label="Curva de equilibrio", lw=1)
+
+    # Valores de v
+    v_s = values_v["v_s"]
+    v_M = values_v["v_M"]
+    v_R = values_v["v_R"]
+    v_minus = values_v["v_minus"]
+    v_plus = values_v["v_plus"]
+
+    # Valores de rho
+    rho_plus = 1/v_plus
+    rho_minus = 1/v_minus
+    rho_M = 1/v_M
+    rho_R = 1/v_R
+    rho_s = 1/v_s
+
+    plt.scatter(rho_s/rhomax, Q_e(rho_s), color="red", zorder=3)
+    texts += [plt.annotate(r"$\rho_s$", (rho_s/rhomax, Q_e(rho_s)), fontsize=15)]
+
+    plt.scatter(rho_plus/rhomax, m + s * rho_plus, color="purple", zorder=3)
+    texts += [plt.annotate(r"$\rho_+$", (rho_plus/rhomax, m + s * rho_plus), fontsize=15)]
+    plt.scatter(rho_minus/rhomax, m + s * rho_minus, color="purple", zorder=3)
+    texts += [plt.annotate(r"$\rho_-$", (rho_minus/rhomax, m + s * rho_minus), fontsize=15)]
+
+    plt.scatter(rho_M/rhomax, m + s * rho_M, color="green", zorder=3)
+    texts += [plt.annotate(r"$\rho_M$", (rho_M/rhomax, m + s * rho_M), fontsize=15)]
+    plt.scatter(rho_R/rhomax,  m + s * rho_R, color="green", zorder=3)
+    texts += [plt.annotate(r"$\rho_R$", (rho_R/rhomax,  m + s * rho_R), fontsize=15)]
+
+    plt.plot([rho_plus/rhomax, rho_minus/rhomax], [m + s * rho_plus, m + s * rho_minus], color="brown", ls="-", 
+            zorder=2, label="Jamiton actual")
+    plt.plot([rho_M/rhomax, rho_R/rhomax], [m + s * rho_M, m + s * rho_R], color="blue", ls="-", 
+            zorder=1, label="Jamiton maximal")
+
+    plt.ylabel(r"$Q(\rho)$", fontsize=20)
+    plt.xlabel(r"$\rho$", fontsize=20)
+    plt.legend(fontsize=12)
+    adjust_text(texts)
+
+    #plt.savefig("Jamitones/Q_rho_{}.png".format(rho_s/rho_max))
+    plt.show()
+
+
 # Gráfico de v
 def plot_v(sol_v, values_v, t_f, xs):
 
@@ -260,10 +310,16 @@ def plot_u(sol_u, values_u, t_f, xs):
     plt.show()
 
 
-# Resuelve EDO
+# Resuelve EDO con respecto a x
 def ODE_jam_solve(t_f, v_R, tau, m, s):
     # Resuelve EDO
     sol_v = solve_ivp(ode_jam_v, (0, t_f), [v_R], t_eval=np.linspace(0, t_f, 10_000), args=[tau, m, s], dense_output=True)
+    return sol_v
+
+# Resuelve EDO con respecto a eta
+def ODE_jam_solve_eta(eta_f, v_R, tau, m, s):
+    # Resuelve EDO
+    sol_v = solve_ivp(ode_jam_v_eta, (0, eta_f), [v_R], t_eval=np.linspace(0, eta_f, 10_000), args=[m, s], dense_output=True)
     return sol_v
 
 
@@ -275,8 +331,9 @@ def find_xs(sol_v, values_v):
     v_minus = values_v["v_minus"]
     v_plus = values_v["v_plus"]
 
+    x_init = float(input("Ingrese x inicial para x_min: "))
     # Calcula cada x
-    x_minus = newton(lambda v: sol_v.sol(v)[0] - v_minus, 0)
+    x_minus = newton(lambda v: sol_v.sol(v)[0] - v_minus, x_init)
     x_plus = newton(lambda v: sol_v.sol(v)[0] - v_plus, 0)
     x_s = newton(lambda v: sol_v.sol(v)[0] - v_s, 0)
     x_to_plot = sol_v.t
@@ -355,15 +412,21 @@ def rho_to_u(rho, m, s):
 # Inicia programa
 def init_program(tau):
     v_f = 100
+    t_f = 6000
 
     # Elección valores sónicos
     rho_s = float(input("Ingrese rho_s: "))
-    t_f = float(input("Ingrese tiempo final de integración: "))
+    #t_f = float(input("Ingrese tiempo final de integración: "))
     rho_s *= rhomax
     v_s = 1/rho_s # Se necesita rho_s normalizado
 
     # Genera jamitones
     values_v, values_rho, values_u, sol_v, sol_rho, sol_u, m, s = jam_gen(v_s, t_f, tau)
+
+    # Resuelve para eta
+    sol_v_eta = ODE_jam_solve_eta(t_f, values_v["v_R"], tau, m, s)
+    sol_rho_eta = lambda eta: v_to_rho(sol_v_eta.sol(eta)[0])
+    sol_u_eta = lambda eta: rho_to_u(sol_rho_eta(eta), m, s)
 
     # Rescata x's
     xs = find_xs(sol_v, values_v)
@@ -379,8 +442,9 @@ def init_program(tau):
     if plotear == "y":
         plot_w(values_v, m, s, v_f)
         plot_r(values_v, v_f, m, s)
+        plot_Q(values_v, m, s)
         plot_v(sol_v, values_v, t_f, xs)
         plot_rho(sol_rho, values_rho, t_f, xs)
         plot_u(sol_u, values_u, t_f, xs)
 
-    return x_minus, x_plus, sol_rho, sol_u
+    return x_minus, x_plus, sol_rho, sol_u, sol_rho_eta, sol_u_eta, s

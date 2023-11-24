@@ -17,24 +17,26 @@ from functions_new import *
 # Condiciones de borde se implementan en clases hijas
 class ARZ(ABC):
 
-    def __init__(self, Q_0, dx, xl, xr, U, h, tau):
+    def __init__(self, F, Q_0, dx, x, U, h, tau):
         # Guarda variables
         self.dx = dx
         self.U = U
         self.h = h
         self.tau = tau
+        self.F = F
 
         # Largo de la grilla
-        self.L = xr - xl
+        self.L = x[-1] - x[0] 
 
         # Numero de puntos
         self.N =  int(self.L//self.dx)
 
         # Epsilon para difusion
-        self.eps = 40 #30 #50
+        self.eps = 20#27 #30 #50
 
-        # Grilla
-        self.x = np.linspace(xl, xr, self.N)
+        # Grillas
+        self.x = x #np.linspace(xl, xr, self.N)
+        self.x_teo = np.linspace(x[0], x[-1], 1000)
     
         # Condición inicial
         self.Q_0 = Q_0
@@ -52,6 +54,10 @@ class ARZ(ABC):
         # Tiempo inicial 
         self.dt = 0 # Después se actualiza al valor que corresponde
         self.t = 0
+
+        # Solución analítica (si es que existe)
+        self.rho_teo = None
+        self.u_teo = None
 
         # Gráfico animado
         self.fig = plt.figure(figsize=(12, 8))
@@ -80,7 +86,17 @@ class ARZ(ABC):
         # Plotea lineas
         self.p_1, = self.axs[0].plot(self.x, self.Q[0]/rhomax, color="r")
         self.p_2, = self.axs[1].plot(self.x, u(self.Q[0], self.Q[1], self.h), color="b")
-        self.axs[1].hlines(umax, xl, xr, ls="--")
+
+        # Linea vacía
+        empty_line = np.full(len(self.x_teo), fill_value=None)
+        self.p_1_teo, = self.axs[0].plot(self.x_teo, empty_line, color="purple")
+        self.p_2_teo, = self.axs[1].plot(self.x_teo, empty_line, color="purple")
+        self.axs[1].hlines(umax, self.x[0], self.x[-1], ls="--")
+
+        # Plotea si hay solución analítica
+        if self.rho_teo is not None and self.u_teo is not None:
+            self.p_1_teo, = self.axs[0].set_ydata(self.rho_teo(self.x_teo, 0)/rhomax)
+            self.p_2_teo, = self.axs[1].set_ydata(self.u_teo(self.x_teo, 0))
 
         self.animation = animation.FuncAnimation(
             self.fig, self.update, frames=50, interval=1)#, blit=True)
@@ -166,6 +182,13 @@ class ARZ(ABC):
 
         self.started = not self.started  
 
+
+    # Asigna solución teórica
+    def set_teo(self, rho_teo, u_teo):
+        self.rho_teo = rho_teo
+        self.u_teo = u_teo
+
+
     def update(self, i):
 
         # No actualiza
@@ -182,7 +205,7 @@ class ARZ(ABC):
         l = self.dt/self.dx
 
         # Paso de Godunov
-        self.Q = self.Q - l * F(self.Q, self.N, self.U, self.h, l)
+        self.Q = self.Q - l * self.F(self.Q, self.N, self.U, self.h)
 
 
         # Resuelve termino de relajación
@@ -198,7 +221,13 @@ class ARZ(ABC):
         self.p_2.set_ydata(u(self.Q[0], self.Q[1], self.h))
         self.axs[0].set_title('Densidad t=' + str("%.2f" % self.t))
         self.axs[1].set_title('Velocidad t=' + str("%.2f" % self.t))
-        return [self.p_1, self.p_2,]
+
+        # Agrega solución teórica
+        if self.rho_teo is not None and self.u_teo is not None:
+            self.p_1_teo.set_ydata(self.rho_teo(self.x_teo, self.t)/rhomax)
+            self.p_2_teo.set_ydata(self.u_teo(self.x_teo, self.t))
+
+        return [self.p_1, self.p_2, self.p_1_teo, self.p_2_teo,]
 
     # Condiciones de borde
     @abstractmethod
@@ -302,10 +331,10 @@ class ARZ(ABC):
 # ARZ con condiciones de borde periódicas
 class ARZ_periodic(ARZ):
 
-    def __init__(self, Q_0, dx, xl, xr, U, h, tau):
+    def __init__(self, F, Q_0, dx, x, U, h, tau):
 
         # Init clase padre
-        super().__init__(Q_0, dx, xl, xr, U, h, tau)
+        super().__init__(F, Q_0, dx, x, U, h, tau)
 
     # Especializa condiciones de borde
     def border_conditions(self):
@@ -315,10 +344,10 @@ class ARZ_periodic(ARZ):
 # ARZ con borde Dirichlet y Neumann
 class ARZ_infinite(ARZ):
 
-    def __init__(self, Q_0, dx, xl, xr, U, h, tau, Q_izq):
+    def __init__(self, F, Q_0, dx, x, U, h, tau, Q_izq):
 
         # Init clase padre
-        super().__init__(Q_0, dx, xl, xr, U, h, tau)
+        super().__init__(F, Q_0, dx, x, U, h, tau)
         self.Q_izq = Q_izq
 
     # Especializa condiciones de borde

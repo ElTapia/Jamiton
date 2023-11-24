@@ -39,19 +39,19 @@ def flux(Q, h):
     return np.array([y-rho*h(rho), (y**2)/rho - h(rho)*y]) #np.array([rho * u_, y * u_])
 
 
-# Flujo de Godunov de primer orden
-def F(Q, N, U, h, l):
+# Flujo de godunov teórico
+def F_teo(Q, N, U, h):
 
     # Guarda flujo en un arreglo
     F_ = np.zeros(Q.shape)
 
     for i in range(1, N-1):
-        
+
         # Rescata actual y vecinos
         Q_left = Q[:, i-1]
         Q_i = Q[:, i]
         Q_right = Q[:, i+1]
-        
+
         # Problema de Riemann en cada vecino
         w_left = w(Q_left, Q_i, U, h)
         w_right = w(Q_i, Q_right, U, h)
@@ -69,6 +69,32 @@ def F(Q, N, U, h, l):
     w_left_pen = w(Q_pen, Q_ult, U, h)
 
     F_[:, 0] = flux(w_right_0, h) - flux(w_left_pen, h)
+
+    return F_
+
+# Flujo con HLL
+def F_HLL(Q, N, U, h):
+
+    # Guarda flujo en un arreglo
+    F_ = np.zeros(Q.shape)
+
+    for i in range(1, N-1):
+
+        # Rescata actual y vecinos
+        Q_left = Q[:, i-1]
+        Q_i = Q[:, i]
+        Q_right = Q[:, i+1]
+
+        # Evalúa en el flujo HLL
+        F_[:, i] = flux_HLL(Q_i, Q_right, h) - flux_HLL(Q_left, Q_i, h)
+
+    # Asume condiciones de borde periódicas
+    Q_0 = Q[:, 0]
+    Q_1 = Q[:, 1]
+    Q_ult = Q[:, -1]
+    Q_pen = Q[:, -2]
+
+    F_[:, 0] = flux_HLL(Q_0, Q_1, h) - flux_HLL(Q_pen, Q_ult, h)
 
     return F_
 
@@ -95,7 +121,8 @@ def h(rho, rho_max=rhomax, gamma_1=gamm_1, gamma_2=gamma_2, u_max=umax):
 
     def h_aux(rho):
         rho_bar = rho/rho_max
-        output = beta * ((rho_bar**gamma_1)/(((1 - rho_bar)**2 + 1e-5**2)**(gamma_2/2)))
+        #output = beta * ((rho_bar**gamma_1)/((((1 - rho_bar)**2 + 1e-10**2))**(gamma_2/2)))
+        output = beta * ((rho_bar**gamma_1)/((1 - rho_bar)**gamma_2))
         return output
 
 
@@ -116,7 +143,7 @@ def h(rho, rho_max=rhomax, gamma_1=gamm_1, gamma_2=gamma_2, u_max=umax):
         
     #    return output
 
-    return 8*(rho/(rho_max-rho))**(1/2) #h_aux(rho) #
+    return 8*(rho/(rho_max-rho))**(1/2) #h_aux(rho) #8*(rho/((((rho_max-rho)**2 + 1e-2**2)))**(1/2))**(1/2) #h_aux(rho)
 
 
 def h_prime(rho, rho_max=rhomax):
@@ -134,7 +161,7 @@ def g(y, b=b, l=l):
 
 # Diagrama fundamental
 def Q_e(rho, rho_max=rhomax, c=c):
-    output = c * (g(0) + (((g(1) - g(0))* rho/rho_max)) - g(rho/rho_max))
+    output = c * (g(0) + (((g(1) - g(0)) * rho/rho_max)) - g(rho/rho_max))
     return output
 
 
@@ -263,6 +290,44 @@ def w(Q_l, Q_r, U, h, u_max=umax, rho_max=rhomax):
     return np.array([rho_w, y_w])
 
 
+# Solver HLL para riemann
+def flux_HLL(Q_l, Q_r, h):
+    # Rescata variables a la izquierda
+    rho_l, y_l = Q_l
+
+    # Rescata variables a la derecha
+    rho_r, y_r = Q_r
+
+    # Obtiene velocidades
+    u_l = u(rho_l, y_l, h)
+    u_r = u(rho_r, y_r, h)
+
+    l_1_l = u_r - rho_r * h_prime(rho_r)
+    l_1_r = u_l - rho_l * h_prime(rho_l)
+    l_2_l = u_l
+    l_2_r = u_r
+
+    s_l = np.min([l_1_l, l_1_r])
+    s_r = np.max([l_2_l, l_2_r])
+
+    s_R_plus = np.max([s_r, 0])
+    s_l_minus = np.min([s_l, 0])
+
+    F_l = flux(Q_l, h)
+    F_r = flux(Q_r, h)
+
+    F_hat = (s_R_plus * F_l - s_l_minus * F_r + s_l_minus * s_R_plus * (Q_r - Q_l))/(s_R_plus - s_l_minus)
+    return F_hat
+
+
+# Obtiene velocidad de onda máxima
+def get_s_max():
+    rho_s_zero = newton(lambda rho: U_prime(rho) + h_prime(rho), 0.2*rhomax)
+    v_s_zero = 1/rho_s_zero
+    m_max = -h_bar_prime(v_s_zero)
+    s_max = U_bar(v_s_zero) - m_max * v_s_zero
+    return s_max
+
 
 # Condición CFL
 def cfl(dt, dx, Q, I_plus, eps=1e-2, u_max=umax, rho_max=rhomax):
@@ -273,11 +338,11 @@ def cfl(dt, dx, Q, I_plus, eps=1e-2, u_max=umax, rho_max=rhomax):
     if len(zero_rho) == 0:
         u_ = u(rho, y, h)
 
-
         l_max = np.max([np.max(u_), np.max(u_-2*rho**2/rho_max)])
+        s_max = get_s_max()
 
         # Podría dar problemas
-        new_dt = dx/(2*u_max) #dx/(2*(u_max + np.max([-Q_prime(rho_max), I_plus]))) #
+        new_dt = dx/(2*s_max) #dx/(2*u_max) #dx/(2*(u_max + np.max([-Q_prime(rho_max), I_plus]))) #
     
         # Condición si nuevo dt es mayor
         if new_dt > dt and dt != 0:
@@ -316,4 +381,8 @@ def r_prime(v, m):
 
 def ode_jam_v(x, v, tau, m, s):
     output = w_v(v, m, s)/(r_prime(v, m) * v * tau)
+    return output
+
+def ode_jam_v_eta(eta, v, m, s):
+    output = w_v(v, m, s)/(r_prime(v, m) * v)
     return output
