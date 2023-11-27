@@ -17,7 +17,7 @@ from functions_new import *
 # Condiciones de borde se implementan en clases hijas
 class ARZ(ABC):
 
-    def __init__(self, F, Q_0, dx, x, U, h, tau):
+    def __init__(self, F, Q_0, dx, x, U, h, tau, rho_teo=None, u_teo=None, viscosity=None):
         # Guarda variables
         self.dx = dx
         self.U = U
@@ -32,11 +32,11 @@ class ARZ(ABC):
         self.N =  int(self.L//self.dx)
 
         # Epsilon para difusion
-        self.eps = 20#27 #30 #50
+        self.viscosity = viscosity
 
         # Grillas
         self.x = x #np.linspace(xl, xr, self.N)
-        self.x_teo = np.linspace(x[0], x[-1], 1000)
+        #self.x_teo = np.linspace(x[0], x[-1], 1000)
     
         # Condición inicial
         self.Q_0 = Q_0
@@ -56,8 +56,8 @@ class ARZ(ABC):
         self.t = 0
 
         # Solución analítica (si es que existe)
-        self.rho_teo = None
-        self.u_teo = None
+        self.rho_teo = rho_teo
+        self.u_teo = u_teo
 
         # Gráfico animado
         self.fig = plt.figure(figsize=(12, 8))
@@ -84,19 +84,22 @@ class ARZ(ABC):
 
 
         # Plotea lineas
-        self.p_1, = self.axs[0].plot(self.x, self.Q[0]/rhomax, color="r")
-        self.p_2, = self.axs[1].plot(self.x, u(self.Q[0], self.Q[1], self.h), color="b")
+        self.p_1, = self.axs[0].plot(self.x, (self.Q[0]/rhomax), color="r", label="Simulación")
+        self.p_2, = self.axs[1].plot(self.x, u(self.Q[0], self.Q[1], self.h), color="b", label="Simulación")
 
         # Linea vacía
-        empty_line = np.full(len(self.x_teo), fill_value=None)
-        self.p_1_teo, = self.axs[0].plot(self.x_teo, empty_line, color="purple")
-        self.p_2_teo, = self.axs[1].plot(self.x_teo, empty_line, color="purple")
-        self.axs[1].hlines(umax, self.x[0], self.x[-1], ls="--")
+        empty_line = np.full(len(self.x), fill_value=None)
+        self.p_1_teo, = self.axs[0].plot(self.x, empty_line, color="purple", ls="--", label="Teórica")
+        self.p_2_teo, = self.axs[1].plot(self.x, empty_line, color="purple", ls="--", label="Teórica")
+        self.axs[1].hlines(umax, self.x[0], self.x[-1], ls="--", label="u_max")
+
+        self.axs[0].legend()
+        self.axs[1].legend()
 
         # Plotea si hay solución analítica
         if self.rho_teo is not None and self.u_teo is not None:
-            self.p_1_teo, = self.axs[0].set_ydata(self.rho_teo(self.x_teo, 0)/rhomax)
-            self.p_2_teo, = self.axs[1].set_ydata(self.u_teo(self.x_teo, 0))
+            self.p_1_teo.set_ydata(self.rho_teo(self.x, 0)/rhomax)
+            self.p_2_teo.set_ydata(self.u_teo(self.x, 0))
 
         self.animation = animation.FuncAnimation(
             self.fig, self.update, frames=50, interval=1)#, blit=True)
@@ -183,12 +186,6 @@ class ARZ(ABC):
         self.started = not self.started  
 
 
-    # Asigna solución teórica
-    def set_teo(self, rho_teo, u_teo):
-        self.rho_teo = rho_teo
-        self.u_teo = u_teo
-
-
     def update(self, i):
 
         # No actualiza
@@ -209,9 +206,11 @@ class ARZ(ABC):
 
 
         # Resuelve termino de relajación
-        self.relaxation_term(self.eps)
-        #self.eps *= 0.5
-        #self.relaxation_term_antiguo()
+        if self.viscosity is not None:
+            self.relaxation_term_viscous(self.viscosity)
+
+        else:
+            self.relaxation_term_inviscous()
 
         # Agrega condiciones de borde
         self.border_conditions()
@@ -224,8 +223,8 @@ class ARZ(ABC):
 
         # Agrega solución teórica
         if self.rho_teo is not None and self.u_teo is not None:
-            self.p_1_teo.set_ydata(self.rho_teo(self.x_teo, self.t)/rhomax)
-            self.p_2_teo.set_ydata(self.u_teo(self.x_teo, self.t))
+            self.p_1_teo.set_ydata(self.rho_teo(self.x, self.t)/rhomax)
+            self.p_2_teo.set_ydata(self.u_teo(self.x, self.t))
 
         return [self.p_1, self.p_2, self.p_1_teo, self.p_2_teo,]
 
@@ -235,7 +234,7 @@ class ARZ(ABC):
         pass
 
     # Término de relajación
-    def relaxation_term_antiguo(self):
+    def relaxation_term_inviscous(self):
         # Agrega no homogeneidad
         rho_sig, y_sig = self.Q
         alpha = self.dt/self.tau
@@ -258,7 +257,7 @@ class ARZ(ABC):
 
 
     # Agrega pequeña difusión
-    def relaxation_term(self, eps):
+    def relaxation_term_viscous(self, eps):
 
         # Función de relajación
         def rlx_func(rho):
@@ -331,10 +330,10 @@ class ARZ(ABC):
 # ARZ con condiciones de borde periódicas
 class ARZ_periodic(ARZ):
 
-    def __init__(self, F, Q_0, dx, x, U, h, tau):
+    def __init__(self, F, Q_0, dx, x, U, h, tau, rho_teo=None, u_teo=None, viscosity=None):
 
         # Init clase padre
-        super().__init__(F, Q_0, dx, x, U, h, tau)
+        super().__init__(F, Q_0, dx, x, U, h, tau, rho_teo, u_teo, viscosity)
 
     # Especializa condiciones de borde
     def border_conditions(self):
@@ -344,10 +343,10 @@ class ARZ_periodic(ARZ):
 # ARZ con borde Dirichlet y Neumann
 class ARZ_infinite(ARZ):
 
-    def __init__(self, F, Q_0, dx, x, U, h, tau, Q_izq):
+    def __init__(self, F, Q_0, dx, x, U, h, tau, Q_izq, rho_teo=None, u_teo=None, viscosity=None):
 
         # Init clase padre
-        super().__init__(F, Q_0, dx, x, U, h, tau)
+        super().__init__(F, Q_0, dx, x, U, h, tau, rho_teo, u_teo, viscosity)
         self.Q_izq = Q_izq
 
     # Especializa condiciones de borde

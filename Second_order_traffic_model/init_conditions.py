@@ -138,37 +138,29 @@ def Q_0_jam(h, tau):
     u_0 = u_per(x_to_plot)
     y_0 = rho_0 * (u_0 + h(rho_0))
 
-    Q_0_ = np.zeros([2, len(x_to_solve)])
+    Q_0_ = np.zeros([2, N])
     Q_0_[0] = rho_0
     Q_0_[1] = y_0
 
-    #def teo_rho(x, t, s=s):
-        #eta = (x - s*t)/tau
-        #if x_minus <= eta and eta <= x_minus:
-        
-    #    interval = x[-1] - x[0]
-    #    x_per = (x - x[0]) % interval + x[0]
-    #    eta_per = (x_per - s*t)/tau
-        
-    #    return rho_sol(eta_per)
-       # return sol_rho_eta(x_minus)
+    def teo_rho(x, t, s=s):
+        eta_minus = x_minus / tau
+        eta_plus = x_plus / tau
+        eta = (x - s*t)/tau
+        interval = eta_minus - eta_plus
+        eta_per = (eta - eta_plus) % interval + eta_plus
 
-    #def teo_u(x, t, s=s):
-        #eta = (x - s*t)/tau
-        #if x_minus <= eta and eta <= x_minus
-    #    interval = x[-1] - x[0]
-    #    x_per = (x - x[0]) % interval + x[0]
+        return sol_rho_eta(eta_per)
 
-    #    eta_per = (x_per - s*t)/tau
-    #    return u_sol(eta_per)
-    
-        #return sol_u_eta(eta)
-        #return sol_u_eta(x_minus)
+    def teo_u(x, t, s=s):
+        eta_minus = x_minus / tau
+        eta_plus = x_plus / tau
+        eta = (x - s*t)/tau
+        interval = eta_minus - eta_plus
+        eta_per = (eta - eta_plus) % interval + eta_plus
 
-    #teo_rho = np.vectorize(teo_rho)
-    #teo_u = np.vectorize(teo_u)
+        return sol_u_eta(eta_per)
 
-    return Q_0_, x_to_plot, dx #, teo_rho, teo_u
+    return Q_0_, x_to_plot, dx, teo_rho, teo_u
 
 
 

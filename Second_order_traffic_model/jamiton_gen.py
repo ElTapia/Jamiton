@@ -317,7 +317,7 @@ def ODE_jam_solve(t_f, v_R, tau, m, s):
     return sol_v
 
 # Resuelve EDO con respecto a eta
-def ODE_jam_solve_eta(eta_f, v_R, tau, m, s):
+def ODE_jam_solve_eta(eta_f, v_R, m, s):
     # Resuelve EDO
     sol_v = solve_ivp(ode_jam_v_eta, (0, eta_f), [v_R], t_eval=np.linspace(0, eta_f, 10_000), args=[m, s], dense_output=True)
     return sol_v
@@ -424,7 +424,7 @@ def init_program(tau):
     values_v, values_rho, values_u, sol_v, sol_rho, sol_u, m, s = jam_gen(v_s, t_f, tau)
 
     # Resuelve para eta
-    sol_v_eta = ODE_jam_solve_eta(t_f, values_v["v_R"], tau, m, s)
+    sol_v_eta = ODE_jam_solve_eta(t_f, values_v["v_R"], m, s)
     sol_rho_eta = lambda eta: v_to_rho(sol_v_eta.sol(eta)[0])
     sol_u_eta = lambda eta: rho_to_u(sol_rho_eta(eta), m, s)
 
@@ -435,7 +435,8 @@ def init_program(tau):
 
     # Arreglo con jamiton
     x_jam = np.linspace(x_plus, x_minus, 100)
-    print(sol_rho(x_plus)/rhomax, sol_rho(x_minus)/rhomax)
+    #print(sol_rho(x_plus)/rhomax, sol_rho(x_minus)/rhomax)
+    print(x_plus, x_minus)
 
     # Plotea
     plotear = input("¿Desea graficar? (y/n): ")
