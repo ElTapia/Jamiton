@@ -111,18 +111,19 @@ def Q_0_5(x, h, rho_init):
 # sexta condición inicial
 # Jamiton teórico
 
-def Q_0_jam(h, tau):
+def Q_0_jam(h, N, tau, rho_s, plotear=False):
 
-    x_minus, x_plus, sol_rho, sol_u, sol_rho_eta, sol_u_eta, s = init_program(tau)
+    x_minus, x_plus, sol_rho, sol_u, sol_rho_eta, sol_u_eta, s = init_program(tau, rho_s, plotear)
+    L = np.fabs(x_minus-x_plus)
 
     print("x_+: ", x_plus)
     print("x_-: ", x_minus)
-    print("Largo del intervalo: ", x_minus-x_plus)
-    dx = float(input("Ingrese dx: "))
+    print("Largo del intervalo: ", L)
+    dx = L/N  # float(input("Ingrese dx: "))
 
-    N = int((x_minus-x_plus)//dx)
-    x_to_solve = np.linspace(x_plus, x_minus, N)
-    x_to_plot = np.linspace(0, x_minus-x_plus, N)
+    # N = int((x_minus-x_plus)//dx)
+    # x_to_solve = np.linspace(x_plus, x_minus, N)
+    x_to_plot = np.arange(0, L, dx)
 
     def rho_per(x):
         interval = x_minus - x_plus
@@ -160,16 +161,16 @@ def Q_0_jam(h, tau):
 
         return sol_u_eta(eta_per)
 
-    return Q_0_, x_to_plot, dx, teo_rho, teo_u
+    return Q_0_, x_to_plot, teo_rho, teo_u
 
 
 
-def Q_0_collide(h, tau):
+def Q_0_collide(h, N, tau, rho_s_1, rho_s_2, plotear=False, x_init=None):
     # Primer jamiton
-    x_minus_1, x_plus_1, sol_rho_1, sol_u_1, sol_rho_eta_1, sol_u_eta_1, s_1 = init_program(tau)
+    x_minus_1, x_plus_1, sol_rho_1, sol_u_1, sol_rho_eta_1, sol_u_eta_1, s_1 = init_program(tau, rho_s_1, plotear, x_init)
 
     # Segundo jamiton
-    x_minus_2, x_plus_2, sol_rho_2, sol_u_2, sol_rho_eta_2, sol_u_eta_2, s_2 = init_program(tau)
+    x_minus_2, x_plus_2, sol_rho_2, sol_u_2, sol_rho_eta_2, sol_u_eta_2, s_2 = init_program(tau, rho_s_2, plotear, x_init)
 
     # Jamitones compatibles
     rho_min_1 = sol_rho_1(x_minus_1)
@@ -181,15 +182,16 @@ def Q_0_collide(h, tau):
         print("Jamitones incompatibles")
         return None
 
+    L = x_minus_2 + (x_minus_1 - x_plus_2) - x_plus_1
     print("x_+: ", x_plus_1)
     print("x_-: ", x_minus_2)
-    print("Largo del intervalo: ", x_minus_2 - x_plus_1)
-    dx = float(input("Ingrese dx: "))
+    print("Largo del intervalo: ", np.fabs(x_minus_2 - x_plus_1))
+    dx = L/N
 
     # Intervalo de solución
-    N = int((x_minus_2+(x_minus_1 - x_plus_2) - x_plus_1)//dx)
-    x_to_solve = np.linspace(x_plus_1, x_minus_2+(x_minus_1 - x_plus_2), N)
-    x_to_plot = np.linspace(0, x_minus_2+(x_minus_1 - x_plus_2) - x_plus_1, N)
+    # N = int((x_minus_2+(x_minus_1 - x_plus_2) - x_plus_1)//dx)
+    # x_to_solve = np.linspace(x_plus_1, x_minus_2+(x_minus_1 - x_plus_2), N)
+    x_to_plot = np.arange(0, x_minus_2+(x_minus_1 - x_plus_2) - x_plus_1, dx)
 
     def rho_sol_combined(x):
         if x_plus_1 <= x and x <= x_minus_1:
@@ -226,4 +228,4 @@ def Q_0_collide(h, tau):
     Q_0_[0] = rho_0
     Q_0_[1] = y_0
 
-    return Q_0_, x_to_plot, dx
+    return Q_0_, x_to_plot

@@ -17,9 +17,9 @@ from functions_new import *
 # Condiciones de borde se implementan en clases hijas
 class ARZ(ABC):
 
-    def __init__(self, F, Q_0, dx, x, U, h, tau, rho_teo=None, u_teo=None, viscosity=None):
+    def __init__(self, F, Q_0, N, x, U, h, tau, rho_teo=None, u_teo=None, viscosity=None, error=False):
         # Guarda variables
-        self.dx = dx
+        #self.dx = dx
         self.U = U
         self.h = h
         self.tau = tau
@@ -29,7 +29,8 @@ class ARZ(ABC):
         self.L = x[-1] - x[0] 
 
         # Numero de puntos
-        self.N =  int(self.L//self.dx)
+        self.N = N  # int(self.L//self.dx)
+        self.dx = self.L/self.N
 
         # Epsilon para difusion
         self.viscosity = viscosity
@@ -54,19 +55,24 @@ class ARZ(ABC):
         # Tiempo inicial 
         self.dt = 0 # Después se actualiza al valor que corresponde
         self.t = 0
+        self.i = 0
+        self.t_list = [self.t]
 
         # Solución analítica (si es que existe)
         self.rho_teo = rho_teo
         self.u_teo = u_teo
+        self.error = error
+        self.error_rho = None
+        self.error_u = None
 
         # Gráfico animado
         self.fig = plt.figure(figsize=(12, 8))
         self.gs = self.fig.add_gridspec(nrows=13, ncols=13)
-        ax1 =  self.fig.add_subplot(self.gs[0:11, 0:8])
-        ax2 = self.fig.add_subplot(self.gs[0:11, 9:13])
-        slider_ax = self.fig.add_subplot(self.gs[12:13, 2:11])
+        ax1 =  self.fig.add_subplot(self.gs[0:9, 0:8])
+        ax2 = self.fig.add_subplot(self.gs[0:9, 9:13])
+        ax3 = self.fig.add_subplot(self.gs[10:13, 2:11])
 
-        self.axs = [ax1, ax2, slider_ax]
+        self.axs = [ax1, ax2, ax3]
 
         # Gráfico densidad
         self.axs[0].set_title('Densidad')
@@ -82,10 +88,18 @@ class ARZ(ABC):
         self.axs[1].set_ylim(0, 25)
         #self.axs[1].set_xlim(0, 3_000)
 
+        # Gráfico error
+        self.axs[2].set_title('Error relativo')
+        self.axs[2].set_ylabel("Error")
+        self.axs[2].set_xlabel("t")
+        self.axs[2].set_xlim(-0.5, 60)
+        self.axs[2].set_ylim(-0.05, 0.05)
+
 
         # Plotea lineas
         self.p_1, = self.axs[0].plot(self.x, (self.Q[0]/rhomax), color="r", label="Simulación")
         self.p_2, = self.axs[1].plot(self.x, u(self.Q[0], self.Q[1], self.h), color="b", label="Simulación")
+
 
         # Linea vacía
         empty_line = np.full(len(self.x), fill_value=None)
@@ -93,13 +107,41 @@ class ARZ(ABC):
         self.p_2_teo, = self.axs[1].plot(self.x, empty_line, color="purple", ls="--", label="Teórica")
         self.axs[1].hlines(umax, self.x[0], self.x[-1], ls="--", label="u_max")
 
+
+        # gráfico vacío para el error
+        empty_error = np.full(len(self.t_list), fill_value=None)
+        self.p_1_error, = self.axs[2].plot(self.t_list, empty_error, label="Error densidad")
+        self.p_2_error, = self.axs[2].plot(self.t_list, empty_error, label="Error velocidad")
+
         self.axs[0].legend()
         self.axs[1].legend()
+        self.axs[2].legend()
 
         # Plotea si hay solución analítica
         if self.rho_teo is not None and self.u_teo is not None:
             self.p_1_teo.set_ydata(self.rho_teo(self.x, 0)/rhomax)
             self.p_2_teo.set_ydata(self.u_teo(self.x, 0))
+
+        # Plotea si hay error
+        if self.error:
+            self.error_rho_list = []
+            self.error_u_list = []
+
+            error_rho = np.linalg.norm(self.Q[0] - self.rho_teo(self.x, self.t), ord=1)
+
+            u_sim = u(self.Q[0], self.Q[1], self.h)
+            u_teo_error = self.u_teo(self.x, self.t)
+            error_u = np.linalg.norm(u_sim - u_teo_error, ord=1)
+            
+            norm_teo_rho = np.linalg.norm(self.rho_teo(self.x, self.t), ord=1)
+            norm_teo_u = np.linalg.norm(u_teo_error, ord=1)
+
+            self.error_rho_list += [error_rho/norm_teo_rho]
+            self.error_u_list += [error_u/norm_teo_u]
+
+            self.p_1_error.set_data(self.t_list[0], self.error_rho_list[0])
+            self.p_2_error.set_data(self.t_list[0], self.error_u_list[0])
+
 
         self.animation = animation.FuncAnimation(
             self.fig, self.update, frames=50, interval=1)#, blit=True)
@@ -108,14 +150,14 @@ class ARZ(ABC):
 
         self.fig.canvas.mpl_connect('key_press_event', self.press_event)
 
-        self.rho_per, self.u_per = 0, 0
-        self.text_box = TextBox(self.axs[2], 'Perturbación', initial="0, 0")
-        self.text_box.on_submit(self.submit)
+        #self.rho_per, self.u_per = 0, 0
+        #self.text_box = TextBox(self.axs[2], 'Perturbación', initial="0, 0")
+        #self.text_box.on_submit(self.submit)
 
 
     # Ingresa perturbación inicial
-    def submit(self, text):
-        self.rho_per, self.u_per = eval(text)
+    #def submit(self, text):
+    #    self.rho_per, self.u_per = eval(text)
 
 
     # Función para poner pausa
@@ -179,9 +221,9 @@ class ARZ(ABC):
 
     # Función para empezar simulación
     def toggle_start(self, *args, **kwargs):
-        if not self.started:
-            self.Q[0][self.N//4] += self.rho_per*rhomax
-            self.Q[1][self.N//4] += self.u_per 
+        #if not self.started:
+        #    self.Q[0][self.N//4] += self.rho_per*rhomax
+        #    self.Q[1][self.N//4] += self.u_per 
 
         self.started = not self.started  
 
@@ -197,6 +239,8 @@ class ARZ(ABC):
         # Actualiza segun condicion CFL
         self.dt = cfl(self.dt, self.dx, self.Q, self.I_plus)
         self.t += self.dt
+        self.i += 1
+        self.t_list += [self.t]
 
         # Lambda
         l = self.dt/self.dx
@@ -226,7 +270,24 @@ class ARZ(ABC):
             self.p_1_teo.set_ydata(self.rho_teo(self.x, self.t)/rhomax)
             self.p_2_teo.set_ydata(self.u_teo(self.x, self.t))
 
-        return [self.p_1, self.p_2, self.p_1_teo, self.p_2_teo,]
+        # Agrega error
+        if self.error:
+            error_rho = np.linalg.norm(self.Q[0] - self.rho_teo(self.x, self.t), ord=1)
+
+            u_sim = u(self.Q[0], self.Q[1], self.h)
+            u_teo_error = self.u_teo(self.x, self.t)
+            error_u = np.linalg.norm(u_sim - u_teo_error, ord=1)
+
+            norm_teo_rho = np.linalg.norm(self.rho_teo(self.x, self.t), ord=1)
+            norm_teo_u = np.linalg.norm(u_teo_error, ord=1)
+
+            self.error_rho_list += [error_rho/norm_teo_rho]
+            self.error_u_list += [error_u/norm_teo_u]
+
+            self.p_1_error.set_data(self.t_list[:self.i], self.error_rho_list[:self.i])
+            self.p_2_error.set_data(self.t_list[:self.i], self.error_u_list[:self.i])
+
+        return [self.p_1, self.p_2, self.p_1_teo, self.p_2_teo, self.p_1_error, self.p_2_error, ]
 
     # Condiciones de borde
     @abstractmethod
@@ -330,10 +391,10 @@ class ARZ(ABC):
 # ARZ con condiciones de borde periódicas
 class ARZ_periodic(ARZ):
 
-    def __init__(self, F, Q_0, dx, x, U, h, tau, rho_teo=None, u_teo=None, viscosity=None):
+    def __init__(self, F, Q_0, N, x, U, h, tau, rho_teo=None, u_teo=None, viscosity=None, error=False):
 
         # Init clase padre
-        super().__init__(F, Q_0, dx, x, U, h, tau, rho_teo, u_teo, viscosity)
+        super().__init__(F, Q_0, N, x, U, h, tau, rho_teo, u_teo, viscosity, error)
 
     # Especializa condiciones de borde
     def border_conditions(self):
@@ -343,10 +404,10 @@ class ARZ_periodic(ARZ):
 # ARZ con borde Dirichlet y Neumann
 class ARZ_infinite(ARZ):
 
-    def __init__(self, F, Q_0, dx, x, U, h, tau, Q_izq, rho_teo=None, u_teo=None, viscosity=None):
+    def __init__(self, F, Q_0, dx, x, U, h, tau, Q_izq, rho_teo=None, u_teo=None, viscosity=None, error=False):
 
         # Init clase padre
-        super().__init__(F, Q_0, dx, x, U, h, tau, rho_teo, u_teo, viscosity)
+        super().__init__(F, Q_0, dx, x, U, h, tau, rho_teo, u_teo, viscosity, error)
         self.Q_izq = Q_izq
 
     # Especializa condiciones de borde

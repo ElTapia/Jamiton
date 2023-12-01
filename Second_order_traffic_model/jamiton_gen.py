@@ -324,14 +324,23 @@ def ODE_jam_solve_eta(eta_f, v_R, m, s):
 
 
 # Encuentra xs importantes
-def find_xs(sol_v, values_v):
+def find_xs(sol_v, values_v, rho_s, x_init=None):
 
     # Rescata valores de v
     v_s = values_v["v_s"]
     v_minus = values_v["v_minus"]
     v_plus = values_v["v_plus"]
 
-    x_init = float(input("Ingrese x inicial para x_min: "))
+    if x_init is None:
+        if 0.24 < rho_s < 0.4:
+            x_init = 0
+
+        if 0.4 <= rho_s < 0.6:
+            x_init = 90
+
+        else:
+            x_init = 250
+    #x_init = float(input("Ingrese x inicial para x_min: "))
     # Calcula cada x
     x_minus = newton(lambda v: sol_v.sol(v)[0] - v_minus, x_init)
     x_plus = newton(lambda v: sol_v.sol(v)[0] - v_plus, 0)
@@ -410,12 +419,12 @@ def rho_to_u(rho, m, s):
     return u
 
 # Inicia programa
-def init_program(tau):
+def init_program(tau, rho_s, plotear=False, x_init=None):
     v_f = 100
     t_f = 6000
 
     # Elección valores sónicos
-    rho_s = float(input("Ingrese rho_s: "))
+    #rho_s = float(input("Ingrese rho_s: "))
     #t_f = float(input("Ingrese tiempo final de integración: "))
     rho_s *= rhomax
     v_s = 1/rho_s # Se necesita rho_s normalizado
@@ -429,7 +438,7 @@ def init_program(tau):
     sol_u_eta = lambda eta: rho_to_u(sol_rho_eta(eta), m, s)
 
     # Rescata x's
-    xs = find_xs(sol_v, values_v)
+    xs = find_xs(sol_v, values_v, rho_s, x_init)
     x_minus = xs[1]
     x_plus = xs[2]
 
@@ -439,8 +448,8 @@ def init_program(tau):
     print(x_plus, x_minus)
 
     # Plotea
-    plotear = input("¿Desea graficar? (y/n): ")
-    if plotear == "y":
+    # plotear = input("¿Desea graficar? (y/n): ")
+    if plotear:  # == "y":
         plot_w(values_v, m, s, v_f)
         plot_r(values_v, v_f, m, s)
         plot_Q(values_v, m, s)
