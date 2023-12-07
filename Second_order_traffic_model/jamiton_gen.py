@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.optimize import newton
+from scipy.optimize import root
 from scipy.interpolate import interp1d
 from scipy.integrate import solve_bvp, solve_ivp
 from adjustText import adjust_text
@@ -342,9 +342,9 @@ def find_xs(sol_v, values_v, rho_s, x_init=None):
             x_init = 250
     #x_init = float(input("Ingrese x inicial para x_min: "))
     # Calcula cada x
-    x_minus = newton(lambda v: sol_v.sol(v)[0] - v_minus, x_init)
-    x_plus = newton(lambda v: sol_v.sol(v)[0] - v_plus, 0)
-    x_s = newton(lambda v: sol_v.sol(v)[0] - v_s, 0)
+    x_minus = root(lambda v: sol_v.sol(v)[0] - v_minus, 10).x[0]
+    x_plus = root(lambda v: sol_v.sol(v)[0] - v_plus, 0).x[0]
+    x_s = root(lambda v: sol_v.sol(v)[0] - v_s, 0).x[0]
     x_to_plot = sol_v.t
     x_to_per = np.linspace(x_minus, sol_v.t[-1], 500)
 
@@ -373,12 +373,12 @@ def jam_gen(v_s, t_f, tau):
         pass
 
     # Jamiton maximal
-    v_M = newton(lambda v: w_v(v, m, s), 40)
-    v_R = newton(lambda v: r(v, m) - r(v_M, m), 10)
+    v_M = root(lambda v: w_v(v, m, s), 40).x[0]
+    v_R = root(lambda v: r(v, m) - r(v_M, m), 10).x[0]
 
     # Jamiton actual
     v_minus = float(input("Escoja v_min (entre {vs} y {vM}): ".format(vs =round(v_s, 3), vM=round(v_M, 3))))
-    v_plus = newton(lambda v: r(v, m) - r(v_minus, m), 8)
+    v_plus = root(lambda v: r(v, m) - r(v_minus, m), 8).x[0]
 
     # Guarda valores de v
     values_v["v_s"] = v_s

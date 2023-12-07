@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import integrate
-from scipy.optimize import newton
+from scipy.optimize import root
 from scipy.interpolate import interp1d
 
 # Parámetros
@@ -194,7 +194,7 @@ def U_inv_points(z, rho_max=rhomax):
     z = float(z)
     U_to_inv = lambda x: U(x)-z
 
-    rho = np.real(newton(U_to_inv, 0.5*rho_max))
+    rho = np.real(root(U_to_inv, 0.5*rho_max).x[0])
     return rho
 
 zs_U = np.linspace(umax, 0, 50)
@@ -208,7 +208,7 @@ def Q_p_inv_points(z, rho_max=rhomax):
     z = float(z)
     Q_to_inv = lambda x: Q_prime(x)-z
     
-    rho = np.real(newton(Q_to_inv, 0.3*rho_max))
+    rho = np.real(root(Q_to_inv, 0.3*rho_max).x[0])
     return rho
 
 zs_Q = np.linspace(-2, umax, 50)
@@ -322,7 +322,7 @@ def flux_HLL(Q_l, Q_r, h):
 
 # Obtiene velocidad de onda máxima
 def get_s_max():
-    rho_s_zero = newton(lambda rho: U_prime(rho) + h_prime(rho), 0.2*rhomax)
+    rho_s_zero = root(lambda rho: U_prime(rho) + h_prime(rho), 0.2*rhomax).x[0]
     v_s_zero = 1/rho_s_zero
     m_max = -h_bar_prime(v_s_zero)
     s_max = U_bar(v_s_zero) - m_max * v_s_zero
@@ -333,23 +333,21 @@ def get_s_max():
 def cfl(dt, dx, Q, I_plus, eps=1e-2, u_max=umax, rho_max=rhomax):
     rho, y = Q
     zero_rho = rho[np.isclose(rho, 0)]
+    
+    u_ = u(rho, y, h)
 
-    # No hay densidad 0
-    if len(zero_rho) == 0:
-        u_ = u(rho, y, h)
-
-        l_max = np.max([np.max(u_), np.max(u_-2*rho**2/rho_max)])
-        s_max = get_s_max()
+        #l_max = np.max([np.max(u_), np.max(u_-2*rho**2/rho_max)])
+    s_max = get_s_max()
 
         # Podría dar problemas
-        new_dt = dx/(2*s_max) #dx/(2*u_max) #dx/(2*(u_max + np.max([-Q_prime(rho_max), I_plus]))) #
+    new_dt = dx/(2*s_max) #dx/(2*u_max) #dx/(2*(u_max + np.max([-Q_prime(rho_max), I_plus]))) #
     
         # Condición si nuevo dt es mayor
-        if new_dt > dt and dt != 0:
-            return dt
+        #if new_dt > dt and dt != 0:
+        #    return dt
     
-    else:
-        new_dt = dt
+    #else:
+    #    new_dt = dt
 
     return new_dt
 

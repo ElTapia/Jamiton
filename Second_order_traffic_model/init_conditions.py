@@ -182,16 +182,83 @@ def Q_0_collide(h, N, tau, rho_s_1, rho_s_2, plotear=False, x_init=None):
         print("Jamitones incompatibles")
         return None
 
+    L = x_minus_2 + np.fabs(x_minus_1 - x_plus_2) - x_plus_1
+    print("x_+: ", x_plus_1)
+    print("x_-: ", x_minus_2)
+    print("Largo del intervalo: ", L)  # np.fabs(x_minus_2 - x_plus_1))
+    dx = L/N
+
+    # Intervalo de solución
+    # N = int((x_minus_2+(x_minus_1 - x_plus_2) - x_plus_1)//dx)
+    #x_to_plot = np.arange(x_plus_1, x_minus_2+(x_minus_1 - x_plus_2), dx)
+    x_to_plot = np.arange(0, L, dx) # x_minus_2 + np.fabs(x_minus_1 - x_plus_2) - x_plus_1
+
+    def rho_sol_combined(x):
+        if x_plus_1 <= x and x <= x_minus_1:
+            return sol_rho_1(x)
+    
+        elif x_plus_2 <= x - np.fabs(x_minus_1 - x_plus_2) and x - np.fabs(x_minus_1 - x_plus_2) <= x_minus_2:
+            return sol_rho_2(x-(x_minus_1 - x_plus_2))
+
+    def u_sol_combined(x):
+        if x_plus_1 <= x and x <= x_minus_1:
+            return sol_u_1(x)
+    
+        elif x_plus_2 <= x - np.fabs(x_minus_1 - x_plus_2) and x - np.fabs(x_minus_1 - x_plus_2) <= x_minus_2:
+            return sol_u_2(x-(x_minus_1 - x_plus_2))
+
+    rho_sol_combined = np.vectorize(rho_sol_combined)
+    u_sol_combined = np.vectorize(u_sol_combined)
+
+    def rho_per(x):
+        interval = x_minus_2 + np.fabs(x_minus_1 - x_plus_2) - x_plus_1
+        x_per = (x - x_plus_1) % interval + x_plus_1
+        return rho_sol_combined(x_per)
+
+    def u_per(x):
+        interval = x_minus_2 + np.fabs(x_minus_1 - x_plus_2) - x_plus_1
+        x_per = (x - x_plus_1) % interval + x_plus_1
+        return u_sol_combined(x_per)
+
+    rho_0 = rho_per(x_to_plot)
+    u_0 = u_per(x_to_plot)
+    y_0 = rho_0 * (u_0 + h(rho_0))
+
+    Q_0_ = np.zeros([2, len(x_to_plot)])
+    Q_0_[0] = rho_0
+    Q_0_[1] = y_0
+
+    return Q_0_, x_to_plot
+
+
+
+def Q_0_collide_M(h, N, tau, rho_s_1, rho_s_2, M, plotear=False, x_init=None):
+    # Primer jamiton
+    x_minus_1, x_plus_1, sol_rho_1, sol_u_1, sol_rho_eta_1, sol_u_eta_1, s_1 = init_program(tau, rho_s_1, plotear, x_init)
+
+    # Segundo jamiton
+    x_minus_2, x_plus_2, sol_rho_2, sol_u_2, sol_rho_eta_2, sol_u_eta_2, s_2 = init_program(tau, rho_s_2, plotear, x_init)
+
+    # Jamitones compatibles
+    rho_min_1 = sol_rho_1(x_minus_1)
+    rho_min_2 = sol_rho_2(x_minus_2)
+
+    compatible = np.isclose(rho_min_1, rho_min_2)
+
+    if not compatible:
+        print("Jamitones incompatibles")
+        return None
+
     L = x_minus_2 + (x_minus_1 - x_plus_2) - x_plus_1
     print("x_+: ", x_plus_1)
     print("x_-: ", x_minus_2)
-    print("Largo del intervalo: ", np.fabs(x_minus_2 - x_plus_1))
+    print("Largo del intervalo: ", L)
     dx = L/N
 
     # Intervalo de solución
     # N = int((x_minus_2+(x_minus_1 - x_plus_2) - x_plus_1)//dx)
     # x_to_solve = np.linspace(x_plus_1, x_minus_2+(x_minus_1 - x_plus_2), N)
-    x_to_plot = np.arange(0, x_minus_2+(x_minus_1 - x_plus_2) - x_plus_1, dx)
+    x_to_plot = np.arange(0, x_minus_2+ (x_minus_1 - x_plus_2) - x_plus_1, dx)
 
     def rho_sol_combined(x):
         if x_plus_1 <= x and x <= x_minus_1:

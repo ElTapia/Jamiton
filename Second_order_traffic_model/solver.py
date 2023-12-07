@@ -41,7 +41,7 @@ class ARZ(ABC):
     
         # Condición inicial
         self.Q_0 = Q_0
-        self.Q = np.zeros([2, self.N])
+        self.Q = np.zeros([2, len(self.x)])
 
         # Asigna valor inicial
         self.Q[0] += self.Q_0[0]
@@ -99,6 +99,9 @@ class ARZ(ABC):
         # Plotea lineas
         self.p_1, = self.axs[0].plot(self.x, (self.Q[0]/rhomax), color="r", label="Simulación")
         self.p_2, = self.axs[1].plot(self.x, u(self.Q[0], self.Q[1], self.h), color="b", label="Simulación")
+
+        self.p_init_1 = self.axs[0].plot(self.x, (self.Q_0[0]/rhomax), color="purple", label="Inicial", ls="--")
+        self.p_init_2 = self.axs[1].plot(self.x, u(self.Q_0[0], self.Q_0[1], self.h), color="purple", label="Inicial", ls="--")
 
 
         # Linea vacía

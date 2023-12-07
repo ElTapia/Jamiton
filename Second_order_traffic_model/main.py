@@ -12,7 +12,7 @@ from functions_new import *
 xl = 0
 xr = 3000 #200 
 #dx = 5
-N = 200
+N = 160
 tau= 5
 
 rho_0 = 0.1*rhomax
@@ -56,5 +56,8 @@ def collide(rho_s_1, rho_s_2, N, x_init=None):
     sol = ARZ_periodic(F_HLL, Q_0_, N, x, U, h, tau)
     plt.show()
 
+rho_s_1 = 0.43333743795471785
+rho_s_2 = 0.305549650098795
 #comparative(0.55, True)
-collide(0.425, 0.443, N, x_init=0)
+collide(rho_s_1, rho_s_2, N)
+# 26.60196099973708
