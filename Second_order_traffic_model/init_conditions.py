@@ -50,7 +50,7 @@ def Q_0_2(x, h):
 # Tercera condición inicial
 # Gaussiana
 def Q_0_3(x, h, rho_init):
-    
+
     # Gaussiana centrada en 1500
     rho_0 = (np.exp(-((x-1000)**2)/8_000)/6+rho_init) * rhomax #np.exp(-x**2/(2*2.7**2))/(2.7*np.sqrt(2*np.pi))
 
@@ -232,33 +232,43 @@ def Q_0_collide(h, N, tau, rho_s_1, rho_s_2, plotear=False, x_init=None):
 
 
 
-def Q_0_collide_M(h, N, tau, rho_s_1, rho_s_2, M, plotear=False, x_init=None):
+def Q_0_collide_triple(h, N, tau, rho_s_1, rho_s_2, rho_s_3, plotear=False, x_init=None):
     # Primer jamiton
     x_minus_1, x_plus_1, sol_rho_1, sol_u_1, sol_rho_eta_1, sol_u_eta_1, s_1 = init_program(tau, rho_s_1, plotear, x_init)
 
     # Segundo jamiton
     x_minus_2, x_plus_2, sol_rho_2, sol_u_2, sol_rho_eta_2, sol_u_eta_2, s_2 = init_program(tau, rho_s_2, plotear, x_init)
 
+    # Tercer jamiton
+    x_minus_3, x_plus_3, sol_rho_3, sol_u_3, sol_rho_eta_3, sol_u_eta_3, s_3 = init_program(tau, rho_s_3, plotear, x_init)
+
     # Jamitones compatibles
     rho_min_1 = sol_rho_1(x_minus_1)
     rho_min_2 = sol_rho_2(x_minus_2)
+    rho_min_3 = sol_rho_2(x_minus_3)
 
-    compatible = np.isclose(rho_min_1, rho_min_2)
+    compatible_1 = np.isclose(rho_min_1, rho_min_2)
+    compatible_2 = np.isclose(rho_min_2, rho_min_3)
+    compatible_3 = np.isclose(rho_min_1, rho_min_3)
 
-    if not compatible:
+    if not compatible_1 or not compatible_2 or not compatible_3:
         print("Jamitones incompatibles")
         return None
 
-    L = x_minus_2 + (x_minus_1 - x_plus_2) - x_plus_1
-    print("x_+: ", x_plus_1)
-    print("x_-: ", x_minus_2)
+    x_minus_max = np.max(x_minus_1, x_minus_2, x_minus_3)
+    x_plus_min = np.min(x_plus_1, x_plus_2, x_plus_3)
+
+    L = x_minus_max - x_plus_min
+    #print("x_+: ", x_plus_1)
+    #print("x_-: ", x_minus_2)
     print("Largo del intervalo: ", L)
     dx = L/N
 
     # Intervalo de solución
     # N = int((x_minus_2+(x_minus_1 - x_plus_2) - x_plus_1)//dx)
     # x_to_solve = np.linspace(x_plus_1, x_minus_2+(x_minus_1 - x_plus_2), N)
-    x_to_plot = np.arange(0, x_minus_2+ (x_minus_1 - x_plus_2) - x_plus_1, dx)
+
+    x_to_plot = np.arange(x_plus_min, x_minus_max, dx)
 
     def rho_sol_combined(x):
         if x_plus_1 <= x and x <= x_minus_1:

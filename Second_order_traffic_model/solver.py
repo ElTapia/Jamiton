@@ -106,9 +106,9 @@ class ARZ(ABC):
 
         # Linea vacía
         empty_line = np.full(len(self.x), fill_value=None)
-        self.p_1_teo, = self.axs[0].plot(self.x, empty_line, color="purple", ls="--", label="Teórica")
-        self.p_2_teo, = self.axs[1].plot(self.x, empty_line, color="purple", ls="--", label="Teórica")
-        self.axs[1].hlines(umax, self.x[0], self.x[-1], ls="--", label="u_max")
+        self.p_1_teo, = self.axs[0].plot(self.x, empty_line, color="purple", ls="--",  alpha=0, label="Teórica")
+        self.p_2_teo, = self.axs[1].plot(self.x, empty_line, color="purple", ls="--",  alpha=0, label="Teórica")
+        self.axs[1].hlines(umax, self.x[0], self.x[-1], ls="--", label=r"$u_{max}$")
 
 
         # gráfico vacío para el error
@@ -249,7 +249,7 @@ class ARZ(ABC):
         l = self.dt/self.dx
 
         # Paso de Godunov
-        self.Q = self.Q - l * self.F(self.Q, self.N, self.U, self.h)
+        self.Q = self.Q - l * self.F(self.Q, self.N, self.U, self.h, self.dx)
 
 
         # Resuelve termino de relajación
@@ -260,7 +260,7 @@ class ARZ(ABC):
             self.relaxation_term_inviscous()
 
         # Agrega condiciones de borde
-        self.border_conditions()
+        #self.border_conditions()
 
         # Actualiza gráfico
         self.p_1.set_ydata(self.Q[0]/rhomax)

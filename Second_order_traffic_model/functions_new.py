@@ -40,12 +40,20 @@ def flux(Q, h):
 
 
 # Flujo de godunov teórico
-def F_teo(Q, N, U, h):
+def F_teo(Q, N, U, h, dx):
 
     # Guarda flujo en un arreglo
     F_ = np.zeros(Q.shape)
+    
+    def phi(r):
+        r_1, r_2 = r
+        output_1 = np.max([0, np.min([1, 2*r_1]), np.min([r_1, 2])])
+        output_2 = np.max([0, np.min([1, 2*r_2]), np.min([r_2, 2])])
+        output = np.array([output_1, output_2])
+        return output
 
     for i in range(1, N-1):
+
 
         # Rescata actual y vecinos
         Q_left = Q[:, i-1]
@@ -53,8 +61,8 @@ def F_teo(Q, N, U, h):
         Q_right = Q[:, i+1]
 
         # Problema de Riemann en cada vecino
-        w_left = w(Q_left, Q_i, U, h)
-        w_right = w(Q_i, Q_right, U, h)
+        w_left = w(Q_i, Q_left, U, h)
+        w_right = w(Q_right, Q_i, U, h)
 
         # Evalúa en el flujo del modelo
         F_[:, i] = flux(w_right, h) - flux(w_left, h)
@@ -73,13 +81,20 @@ def F_teo(Q, N, U, h):
     return F_
 
 # Flujo con HLL
-def F_HLL(Q, N, U, h):
+def F_HLL_old(Q, N, U, h, dx):
 
     # Guarda flujo en un arreglo
     F_ = np.zeros(Q.shape)
 
-    for i in range(1, N-1):
+    def phi(r):
+        r_1, r_2 = r
+        output_1 = np.max([0, np.min([1, r_1])])
+        output_2 = np.max([0, np.min([1, r_2])])
+        output = np.array([output_1, output_2])
+        return output
 
+    for i in range(1, N-1):
+        
         # Rescata actual y vecinos
         Q_left = Q[:, i-1]
         Q_i = Q[:, i]
@@ -94,9 +109,106 @@ def F_HLL(Q, N, U, h):
     Q_ult = Q[:, -1]
     Q_pen = Q[:, -2]
 
-    F_[:, 0] = flux_HLL(Q_0, Q_1, h) - flux_HLL(Q_pen, Q_ult, h)
+    per = flux_HLL(Q_0, Q_1, h) - flux_HLL(Q_pen, Q_ult, h)
+    F_[:, 0] = per
+    F_[:, -1] = per
 
     return F_
+
+
+# Flujo con HLL
+def F_HLL(Q, N, U, h, dx):
+
+    # Guarda flujo en un arreglo
+    F_ = np.zeros(Q.shape)
+
+    def phi(r):
+        r_1, r_2 = r
+        output_1 = np.max([0, np.min([1, r_1])])
+        output_2 = np.max([0, np.min([1, r_2])])
+        output = np.array([output_1, output_2])
+        return output
+
+    for i in range(2, N-2):
+        
+        # Rescata actual y vecinos
+        Q_left_left = Q[:, i-2]
+        Q_left = Q[:, i-1]
+        Q_i = Q[:, i]
+        Q_right = Q[:, i+1]
+        Q_right_right = Q[:, i+2]
+
+        r_left = (Q_left - Q_left_left)/(Q_i - Q_left)
+        r_i = (Q_i - Q_left)/(Q_right - Q_i)
+        r_right = (Q_right - Q_i)/(Q_right_right - Q_right)
+
+        Q_L = Q_i + (1/2) * phi(r_i) * (Q_right - Q_i)
+        Q_L_ = Q_left + (1/2) * phi(r_left) * (Q_i - Q_left)
+
+        Q_R = Q_right - (1/2) * phi(r_right) * (Q_right_right - Q_right)
+        Q_R_ = Q_i - (1/2) * phi(r_i) * (Q_right - Q_i)
+
+
+        # Evalúa en el flujo HLL
+        F_[:, i] = flux_HLL(Q_L, Q_R, h) - flux_HLL(Q_L_, Q_R_, h) #flux_HLL(Q_i, Q_right, h) - flux_HLL(Q_left, Q_i, h)
+
+    # Asume condiciones de borde periódicas
+    Q_0 = Q[:, 0]
+    Q_1 = Q[:, 1]
+    Q_2 = Q[:, 2]
+    Q_3 = Q[:, 3]
+    Q_ult = Q[:, -1]
+    Q_pen = Q[:, -2]
+    Q_antp = Q[:, -3]
+    Q_antantp = Q[:, -4]
+    
+    # i = 1
+    r_0 = (Q_ult - Q_pen)/(Q_1 - Q_ult)
+    r_1 = (Q_1 - Q_0)/(Q_2 - Q_1)
+    r_2 = (Q_2 - Q_1)/(Q_3 - Q_2)
+
+    Q_L_1 = Q_1 + (1/2) * phi(r_1) * (Q_2 - Q_1)
+    Q_L_1_ = Q_ult + (1/2) * phi(r_0) * (Q_1 - Q_ult)
+
+    Q_R_1 = Q_2 - (1/2) * phi(r_2) * (Q_3 - Q_2)
+    Q_R_1_ = Q_1 - (1/2) * phi(r_1) * (Q_2 - Q_1)
+
+    per_1 = flux_HLL(Q_L_1, Q_R_1, h) - flux_HLL(Q_L_1_, Q_R_1_, h)
+
+
+    # i = 0
+    r_left = (Q_pen - Q_antp)/(Q_ult - Q_pen)
+    r_0 = (Q_ult - Q_pen)/(Q_1 - Q_ult)
+    r_right = (Q_1 - Q_0)/(Q_2 - Q_1)
+
+    Q_L_0 = Q_ult + (1/2) * phi(r_0) * (Q_1 - Q_ult)
+    Q_L_0_ = Q_pen + (1/2) * phi(r_left) * (Q_ult - Q_pen)
+
+    Q_R_0 = Q_1 - (1/2) * phi(r_right) * (Q_2 - Q_1)
+    Q_R_0_ = Q_ult - (1/2) * phi(r_0) * (Q_1 - Q_ult)
+
+    per = flux_HLL(Q_L_0, Q_R_0, h) - flux_HLL(Q_L_0_, Q_R_0_, h)
+
+    # i = N-1
+    r_antp = (Q_antp - Q_antantp)/(Q_pen - Q_antp)
+    r_pen = (Q_pen - Q_antp)/(Q_ult - Q_pen)
+    r_ult = (Q_ult - Q_pen)/(Q_1 - Q_ult)
+
+    Q_L_N_1 = Q_pen + (1/2) * phi(r_pen) * (Q_ult - Q_pen)
+    Q_L_N_1_ = Q_antp + (1/2) * phi(r_antp) * (Q_pen - Q_antp)
+
+    Q_R_N_1 = Q_ult - (1/2) * phi(r_ult) * (Q_1 - Q_ult)
+    Q_R_N_1_ = Q_pen - (1/2) * phi(r_pen) * (Q_ult - Q_pen)
+
+    per_2 = flux_HLL(Q_L_N_1, Q_R_N_1, h) - flux_HLL(Q_L_N_1_, Q_R_N_1_, h)
+    
+    F_[:, 1] = per_1
+    F_[:, 0] = per
+    F_[:, -1] = per
+    F_[:, -2] = per_2
+
+    return F_
+
 
 
 # Integral de densidad
