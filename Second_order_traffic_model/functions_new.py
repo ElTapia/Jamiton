@@ -231,11 +231,11 @@ def h(rho, rho_max=rhomax, gamma_1=gamm_1, gamma_2=gamma_2, u_max=umax):
     if type(rho) is float or type(rho) is np.float64:
         rho = np.array(rho)
 
-    def h_aux(rho):
-        rho_bar = rho/rho_max
+    #def h_aux(rho):
+    #    rho_bar = rho/rho_max
         #output = beta * ((rho_bar**gamma_1)/((((1 - rho_bar)**2 + 1e-10**2))**(gamma_2/2)))
-        output = beta * ((rho_bar**gamma_1)/((1 - rho_bar)**gamma_2))
-        return output
+    #    output = beta * ((rho_bar**gamma_1)/((1 - rho_bar)**gamma_2))
+    #    return output
 
 
     # Alcanza rho_max
@@ -434,7 +434,7 @@ def flux_HLL(Q_l, Q_r, h):
 
 # Obtiene velocidad de onda máxima
 def get_s_max():
-    rho_s_zero = root(lambda rho: U_prime(rho) + h_prime(rho), 0.2*rhomax).x[0]
+    rho_s_zero = root(lambda rho: U_prime(rho) + h_prime(rho), 0.05*rhomax).x[0]
     v_s_zero = 1/rho_s_zero
     m_max = -h_bar_prime(v_s_zero)
     s_max = U_bar(v_s_zero) - m_max * v_s_zero

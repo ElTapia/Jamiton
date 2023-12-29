@@ -10,9 +10,9 @@ from functions_new import *
 
 # Parámetros
 xl = 0
-xr = 200 #3000 
-#dx = 2
-N = 160
+xr = 200 #3000
+dx = 2
+N = 200
 #N = int((xr-xl)//dx)
 tau= 5
 
@@ -22,13 +22,13 @@ u_0 = 5
 #Q_0 = [rho_0, y_0]
 
 
-x = np.linspace(xl, xr, int((xr-xl)//dx))
+#x = np.linspace(xl, xr, int((xr-xl)//dx))
 
 #Q_0_ = Q_0_1(x, h)
 #Q_0_ = Q_0_2(x, h)
 #Q_0_ = Q_0_4(x, h)
 
-rho_init = 0.3
+rho_init = 0.1
 #Q_0_ = Q_0_3(x, h, rho_init)
 #Q_0_ = Q_0_5(x, h, rho_init)
 #Q_0_ = Q_0_6(x, h, rho_init)
@@ -55,12 +55,12 @@ def comparative(rho_s, error=False, viscosity=None):
 
 def collide(rho_s_1, rho_s_2, N, x_init=None):
     Q_0_, x = Q_0_collide(h, N, tau, rho_s_1, rho_s_2, x_init)
-    sol = ARZ_periodic(F_HLL_old, Q_0_, N, x, U, h, tau)
+    sol = ARZ_periodic(F_HLL, Q_0_, N, x, U, h, tau)
     plt.show()
 
 rho_s_1 = 0.43333743795471785
-rho_s_2 = 0.305549650098795 #0.4338299555247423
-#comparative(0.433, True)
+rho_s_2 = 0.42#0.4338299555247423 #0.305549650098795 #
+#comparative(0.20510620806186544)#0.433, True)
 collide(rho_s_1, rho_s_2, N)
 # 26.60196099973708
 

@@ -85,11 +85,11 @@ class ARZ(ABC):
         self.axs[1].set_title('Velocidad')
         self.axs[1].set_ylabel(r"$u$")
         self.axs[1].set_xlabel("x")
-        self.axs[1].set_ylim(0, 25)
+        self.axs[1].set_ylim(0, 40)#25)
         #self.axs[1].set_xlim(0, 3_000)
 
         # Gráfico error
-        self.axs[2].set_title('Error relativo')
+        #self.axs[2].set_title('Error relativo')
         self.axs[2].set_ylabel("Error")
         self.axs[2].set_xlabel("t")
         self.axs[2].set_xlim(-0.5, 60)
@@ -100,14 +100,14 @@ class ARZ(ABC):
         self.p_1, = self.axs[0].plot(self.x, (self.Q[0]/rhomax), color="r", label="Simulación")
         self.p_2, = self.axs[1].plot(self.x, u(self.Q[0], self.Q[1], self.h), color="b", label="Simulación")
 
-        self.p_init_1 = self.axs[0].plot(self.x, (self.Q_0[0]/rhomax), color="purple", label="Inicial", ls="--")
-        self.p_init_2 = self.axs[1].plot(self.x, u(self.Q_0[0], self.Q_0[1], self.h), color="purple", label="Inicial", ls="--")
+        self.p_init_1 = self.axs[0].plot(self.x, (self.Q_0[0]/rhomax), color="purple", ls="--", alpha=0)
+        self.p_init_2 = self.axs[1].plot(self.x, u(self.Q_0[0], self.Q_0[1], self.h), color="purple", ls="--", alpha=0)
 
 
         # Linea vacía
         empty_line = np.full(len(self.x), fill_value=None)
-        self.p_1_teo, = self.axs[0].plot(self.x, empty_line, color="purple", ls="--",  alpha=0, label="Teórica")
-        self.p_2_teo, = self.axs[1].plot(self.x, empty_line, color="purple", ls="--",  alpha=0, label="Teórica")
+        self.p_1_teo, = self.axs[0].plot(self.x, empty_line, color="purple", ls="--", label="Teórica")
+        self.p_2_teo, = self.axs[1].plot(self.x, empty_line, color="purple", ls="--", label="Teórica")
         self.axs[1].hlines(umax, self.x[0], self.x[-1], ls="--", label=r"$u_{max}$")
 
 
