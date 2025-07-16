@@ -10,8 +10,8 @@ from functions_new import *
 
 # Parámetros
 xl = 0
-xr = 200 #3000
-dx = 2
+xr = 6000 #200 
+dx = 15 #2
 N = 200
 #N = int((xr-xl)//dx)
 tau= 5
@@ -44,24 +44,27 @@ rho_init = 0.1
 #y_izq = y_u(rho_izq, u_izq, h)
 
 #sol = ARZ_periodic(F_HLL_old, Q_0_, N, x, U, h, tau)#, teo_rho, teo_u)
+
+#sol = ARZ_periodic(F_HLL_old, Q_0_, N, x, U, h, tau)
 #plt.show()
-#sol = ARZ_periodic(F_HLL, Q_0_, N, x, U, h, tau)
+
 #sol = ARZ_periodic(F_teo, Q_0_, dx, x, U, h, tau, teo_rho, teo_u, 1)
 
 def comparative(rho_s, error=False, viscosity=None):
     Q_0_, x, teo_rho, teo_u = Q_0_jam(h, N, tau, rho_s)
-    sol = ARZ_periodic(F_HLL, Q_0_, N, x, U, h, tau, teo_rho, teo_u, error=error, viscosity=viscosity)
+    sol = ARZ_periodic(F_HLL_old, Q_0_, N, x, U, h, tau, teo_rho, teo_u, error=error, viscosity=viscosity)
     plt.show()
 
 def collide(rho_s_1, rho_s_2, N, x_init=None):
     Q_0_, x = Q_0_collide(h, N, tau, rho_s_1, rho_s_2, x_init)
-    sol = ARZ_periodic(F_HLL, Q_0_, N, x, U, h, tau)
+    sol = ARZ_periodic(F_HLL_old, Q_0_, N, x, U, h, tau)
     plt.show()
 
-rho_s_1 = 0.43333743795471785
+rho_s_1 = 0.35#0.43333743795471785
 rho_s_2 = 0.42#0.4338299555247423 #0.305549650098795 #
-#comparative(0.20510620806186544)#0.433, True)
-collide(rho_s_1, rho_s_2, N)
+
+#comparative(rho_s_1)
+#collide(rho_s_1, rho_s_2, N)
 # 26.60196099973708
 
-#comparative(rho_s_1, error=False)
+comparative(rho_s_2, error=False)

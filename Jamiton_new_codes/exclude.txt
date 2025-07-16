@@ -1,0 +1,12 @@
+Machine_scripts/Jamitons/test_jamitons
+Machine_scripts/Results
+Machine_scripts/Errors/LxF/rho_s_0.433_Final_time_0.5
+Machine_scripts/Errors/LxF/rho_s_0.433_Final_time_2
+Machine_scripts/Errors/LxF/rho_s_0.433_Final_time_0.5_heaven
+Machine_scripts/Errors/LxF/rho_s_0.433_Final_time_2_heaven
+Test_and_results
+__pycache__
+exclude.txt
+.DS_Store
+.ipynb_checkpoints/*
+.ipynb_checkpoints/

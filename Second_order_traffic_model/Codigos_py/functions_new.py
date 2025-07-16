@@ -5,9 +5,9 @@ from scipy.optimize import root
 from scipy.interpolate import interp1d
 
 # Parámetros
-gamm_1 = 1/5
+gamma = 1/2
 gamma_2 = 1/10
-beta = 12 #8
+beta = 8
 umax = 20 #19.2 #20
 rhomax = 1/7.5
 c = 0.078 * umax * rhomax
@@ -44,13 +44,6 @@ def F_teo(Q, N, U, h, dx):
 
     # Guarda flujo en un arreglo
     F_ = np.zeros(Q.shape)
-    
-    def phi(r):
-        r_1, r_2 = r
-        output_1 = np.max([0, np.min([1, 2*r_1]), np.min([r_1, 2])])
-        output_2 = np.max([0, np.min([1, 2*r_2]), np.min([r_2, 2])])
-        output = np.array([output_1, output_2])
-        return output
 
     for i in range(1, N-1):
 
@@ -226,7 +219,7 @@ def density_integral(x, dx, N_t, Q):
 
 # Funciones del modelo
 # Función de duda
-def h(rho, rho_max=rhomax, gamma_1=gamm_1, gamma_2=gamma_2, u_max=umax):
+def h(rho, rho_max=rhomax, u_max=umax):
 
     if type(rho) is float or type(rho) is np.float64:
         rho = np.array(rho)

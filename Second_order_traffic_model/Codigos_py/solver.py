@@ -10,6 +10,15 @@ from matplotlib.widgets import TextBox
 
 from abc import ABC, abstractmethod
 
+plt.style.use('bmh')
+plt.rcParams['figure.figsize'] = (7, 5)
+plt.rcParams['legend.fontsize'] = 16
+plt.rcParams["axes.titlesize"] = 24
+plt.rcParams["axes.labelsize"] = 18
+plt.rcParams["figure.titlesize"] = 24
+plt.rcParams["ytick.labelsize"] = 16
+plt.rcParams["xtick.labelsize"] = 16
+
 # Funciones de simulación
 from functions_new import *
 
@@ -68,32 +77,32 @@ class ARZ(ABC):
         # Gráfico animado
         self.fig = plt.figure(figsize=(12, 8))
         self.gs = self.fig.add_gridspec(nrows=13, ncols=13)
-        ax1 =  self.fig.add_subplot(self.gs[0:9, 0:8])
-        ax2 = self.fig.add_subplot(self.gs[0:9, 9:13])
-        ax3 = self.fig.add_subplot(self.gs[10:13, 2:11])
+        ax1 =  self.fig.add_subplot(self.gs[0:12, 0:8])
+        ax2 = self.fig.add_subplot(self.gs[0:12, 9:13])
+        #ax3 = self.fig.add_subplot(self.gs[13:13, 2:11])
 
-        self.axs = [ax1, ax2, ax3]
+        self.axs = [ax1, ax2]#, ax3]
 
         # Gráfico densidad
-        self.axs[0].set_title('Densidad')
-        self.axs[0].set_ylabel(r"$\rho/\rho_{max}$")
-        self.axs[0].set_xlabel("x")
+        self.axs[0].set_title('Densidad', fontsize=24)
+        self.axs[0].set_ylabel(r"$\rho/\rho_{max}$", fontsize=20)
+        self.axs[0].set_xlabel(r"$x$", fontsize=20)
         self.axs[0].set_ylim(-0.1, 1.0)
         #self.axs[0].set_xlim(0, 3_000)
 
         # Gráfico velocidad
-        self.axs[1].set_title('Velocidad')
-        self.axs[1].set_ylabel(r"$u$")
-        self.axs[1].set_xlabel("x")
-        self.axs[1].set_ylim(0, 40)#25)
+        self.axs[1].set_title('Velocidad', fontsize=24)
+        self.axs[1].set_ylabel(r"$u$", fontsize=20)
+        self.axs[1].set_xlabel(r"$x$", fontsize=20)
+        self.axs[1].set_ylim(0, 25)
         #self.axs[1].set_xlim(0, 3_000)
 
         # Gráfico error
         #self.axs[2].set_title('Error relativo')
-        self.axs[2].set_ylabel("Error")
-        self.axs[2].set_xlabel("t")
-        self.axs[2].set_xlim(-0.5, 60)
-        self.axs[2].set_ylim(-0.05, 0.05)
+        #self.axs[2].set_ylabel("Error")
+        #self.axs[2].set_xlabel("t")
+        #self.axs[2].set_xlim(-0.5, 60)
+        #self.axs[2].set_ylim(-0.05, 0.05)
 
 
         # Plotea lineas
@@ -112,13 +121,13 @@ class ARZ(ABC):
 
 
         # gráfico vacío para el error
-        empty_error = np.full(len(self.t_list), fill_value=None)
-        self.p_1_error, = self.axs[2].plot(self.t_list, empty_error, label="Error densidad")
-        self.p_2_error, = self.axs[2].plot(self.t_list, empty_error, label="Error velocidad")
+        #empty_error = np.full(len(self.t_list), fill_value=None)
+        #self.p_1_error, = self.axs[2].plot(self.t_list, empty_error, label="Error densidad")
+        #self.p_2_error, = self.axs[2].plot(self.t_list, empty_error, label="Error velocidad")
 
         self.axs[0].legend()
         self.axs[1].legend()
-        self.axs[2].legend()
+        #self.axs[2].legend()
 
         # Plotea si hay solución analítica
         if self.rho_teo is not None and self.u_teo is not None:
@@ -265,8 +274,8 @@ class ARZ(ABC):
         # Actualiza gráfico
         self.p_1.set_ydata(self.Q[0]/rhomax)
         self.p_2.set_ydata(u(self.Q[0], self.Q[1], self.h))
-        self.axs[0].set_title('Densidad t=' + str("%.2f" % self.t))
-        self.axs[1].set_title('Velocidad t=' + str("%.2f" % self.t))
+        self.axs[0].set_title('Densidad t=' + str("%.2f" % self.t), fontsize=24)
+        self.axs[1].set_title('Velocidad t=' + str("%.2f" % self.t), fontsize=24)
 
         # Agrega solución teórica
         if self.rho_teo is not None and self.u_teo is not None:
@@ -290,7 +299,7 @@ class ARZ(ABC):
             self.p_1_error.set_data(self.t_list[:self.i], self.error_rho_list[:self.i])
             self.p_2_error.set_data(self.t_list[:self.i], self.error_u_list[:self.i])
 
-        return [self.p_1, self.p_2, self.p_1_teo, self.p_2_teo, self.p_1_error, self.p_2_error, ]
+        return [self.p_1, self.p_2, self.p_1_teo, self.p_2_teo]#, self.p_1_error, self.p_2_error, ]
 
     # Condiciones de borde
     @abstractmethod
